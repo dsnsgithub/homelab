@@ -17,7 +17,7 @@ Applications (run on a heterogeneous cluster of both arm64 and amd64):
 - [ ] Immich
 - [ ] T3 Code
 
-### Deploy Homelab
+## Deploy Homelab onto existing Kubernetes cluster
 
 1. Clone Homelab Repo
 ```bash
