@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: v2ray
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/dsnsgithub/homelab.git
+    targetRevision: main
+    path: apps/v2ray
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: v2ray-vpn
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
