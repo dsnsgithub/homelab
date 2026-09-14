@@ -4,7 +4,6 @@ metadata:
   name: web-proxy
   namespace: argocd
   annotations:
-    # Sync after the traefik app so the IngressRoute CRDs exist first.
     argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default

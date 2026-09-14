@@ -1,7 +1,3 @@
-# Wildcard certs for the three apexes. cert-manager solves Cloudflare DNS-01
-# via the letsencrypt-prod ClusterIssuer and stores each cert as a Secret
-# in THIS namespace, where the IngressRoutes reference them. Shared Secrets:
-# every Traefik replica reads the same cert - no acme.json, true HA.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

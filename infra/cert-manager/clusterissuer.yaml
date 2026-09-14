@@ -7,12 +7,10 @@ spec:
     email: dominic@seung.dev
     server: https://acme-v02.api.letsencrypt.org/directory
     privateKeySecretRef:
-      # Lives in the cert-manager namespace (created automatically).
       name: letsencrypt-prod-key
     solvers:
       - dns01:
           cloudflare:
             apiTokenSecretRef:
-              # Must live in the cert-manager namespace (see sealed secret).
               name: cloudflare-api-token
               key: api-token

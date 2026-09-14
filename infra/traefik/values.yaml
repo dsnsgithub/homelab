@@ -1,26 +1,12 @@
-# Traefik Helm values (chart traefik/traefik, pinned in argocd/apps/traefik-app.yaml).
-# Deployed by ArgoCD into namespace `traefik` - fully declarative,
-# independent of the k3s bundled Traefik (which should stay disabled).
-#
-# TLS certs come from cert-manager Secrets (see apps/web-proxy/certificates.yaml),
-# so Traefik is stateless and runs 2 replicas across nodes. No acme.json.
-#
-# DNS: point A records for *.dsns.dev, *.mseung.dev, *.seung.dev
-# (and apexes) at 10.3.3.12, DNS-only (grey cloud, these are RFC1918).
-
 deployment:
-  # HA: any replica can serve any route, certs are shared Secrets.
   replicas: 2
 
-# Pin Traefik LoadBalancer to a dedicated kube-vip VIP.
 service:
   spec:
     loadBalancerIP: "10.3.3.12"
 
 ports:
   web:
-    # Global HTTP -> HTTPS redirect. DNS-01 challenges don't need port 80,
-    # so unconditional redirect is safe (unlike HTTP-01).
     http:
       redirections:
         entryPoint:

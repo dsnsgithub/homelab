@@ -22,5 +22,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      # CRDs are large; server-side apply avoids annotation limits.
       - ServerSideApply=true
