@@ -59,6 +59,10 @@ jobs:
           set -eu
           apk add --no-cache bash git python3 py3-yaml curl gcompat ca-certificates
           helm version --short
+          # The workspace is mounted from the host with a different owner;
+          # without this every in-container git call fails with "dubious
+          # ownership".
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           curl -sSL --fail --retry 3 --retry-all-errors \
             "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
             -o /tmp/kubeconform.tar.gz
