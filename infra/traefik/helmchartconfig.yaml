@@ -1,0 +1,63 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    # Pin Traefik LoadBalancer to a dedicated kube-vip VIP.
+    # DNS: point A records for *.dsns.dev, *.mseung.dev, *.seung.dev
+    # (and apexes) at 10.3.3.12, or CNAME them to one name that resolves there.
+    service:
+      spec:
+        loadBalancerIP: "10.3.3.12"
+        # Uncomment if kube-vip ServiceLB / MetalLB needs it:
+        # type: LoadBalancer
+    ports:
+      web:
+        # Global HTTP -> HTTPS redirect. ACME DNS-01 does not need port 80,
+        # so unconditional redirect is safe (unlike HTTP-01).
+        http:
+          redirections:
+            entryPoint:
+              to: websecure
+              scheme: https
+              permanent: true
+    persistence:
+      enabled: true
+      size: 128Mi
+      # k3s default storage path is /data on host; acme.json lives there.
+      # Do NOT lose this file or you will hit Let's Encrypt rate limits.
+    certificatesResolvers:
+      letsencrypt:
+        acme:
+          # TODO: change to your real email (Let's Encrypt account + expiry notices)
+          email: dominic@seung.dev
+          storage: /data/acme.json
+          dnsChallenge:
+            provider: cloudflare
+            resolvers:
+              - "1.1.1.1:53"
+              - "1.0.0.1:53"
+            # delayBeforeCheck helps when Cloudflare secondary NS are slow
+            # delayBeforeCheck: 30
+          # Uncomment to test first, then switch to production:
+          # caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+    env:
+      - name: CF_DNS_API_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: traefik-cloudflare
+            key: CF_DNS_API_TOKEN
+            optional: false
+    deployment:
+      initContainers:
+        - name: volume-permissions
+          image: busybox:latest
+          command: ["sh", "-c", "touch /data/acme.json; chmod -v 600 /data/acme.json"]
+          volumeMounts:
+            - mountPath: /data
+              name: data
+    podSecurityContext:
+      fsGroup: 65532
+      fsGroupChangePolicy: "OnRootMismatch"

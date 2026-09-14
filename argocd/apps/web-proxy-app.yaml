@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: web-proxy
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/dsnsgithub/homelab.git
+    targetRevision: main
+    path: apps/web-proxy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: web-proxy
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
