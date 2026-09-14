@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: v2ray-service
+  namespace: v2ray-vpn
+spec:
+  selector:
+    app: v2ray
+  ports:
+  - name: v2ray
+    port: 10086
+    targetPort: 10086
