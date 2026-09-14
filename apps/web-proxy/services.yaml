@@ -10,18 +10,21 @@ spec:
       targetPort: 80
       protocol: TCP
 ---
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name: max-proxy
   namespace: web-proxy
-subsets:
+  labels:
+    kubernetes.io/service-name: max-proxy
+addressType: IPv4
+ports:
+  - name: http
+    port: 80
+    protocol: TCP
+endpoints:
   - addresses:
-      - ip: 10.3.3.218
-    ports:
-      - name: http
-        port: 80
-        protocol: TCP
+      - 10.3.3.218
 ---
 apiVersion: v1
 kind: Service
@@ -35,18 +38,21 @@ spec:
       targetPort: 7799
       protocol: TCP
 ---
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name: code
   namespace: web-proxy
-subsets:
+  labels:
+    kubernetes.io/service-name: code
+addressType: IPv4
+ports:
+  - name: http
+    port: 7799
+    protocol: TCP
+endpoints:
   - addresses:
-      - ip: 10.3.3.195
-    ports:
-      - name: http
-        port: 7799
-        protocol: TCP
+      - 10.3.3.195
 ---
 apiVersion: v1
 kind: Service
@@ -60,18 +66,21 @@ spec:
       targetPort: 2283
       protocol: TCP
 ---
-apiVersion: v1
-kind: Endpoints
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
 metadata:
   name: immich
   namespace: web-proxy
-subsets:
+  labels:
+    kubernetes.io/service-name: immich
+addressType: IPv4
+ports:
+  - name: http
+    port: 2283
+    protocol: TCP
+endpoints:
   - addresses:
-      - ip: 10.3.3.172
-    ports:
-      - name: http
-        port: 2283
-        protocol: TCP
+      - 10.3.3.172
 ---
 apiVersion: v1
 kind: Service
