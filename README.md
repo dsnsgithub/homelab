@@ -9,6 +9,7 @@ Virtual IPs (created by kube-vip):
 - `10.3.3.9` (argocd LoadBalancer)
 - `10.3.3.10` (Minecraft Proxy LoadBalancer)
 - `10.3.3.11` (V2Ray LoadBalancer)
+- `10.3.3.12` (Traefik web proxy LoadBalancer)
 
 kube-vip will elect a leader node to manage a virtual IP, auto detecting the interface to bind to.
 kube-vip has been configured to advertise over ARP and if the leader node goes offline, a new leader will be elected and sends gratuitous ARP to claim the IP.
@@ -17,7 +18,7 @@ This configuration expects a minimum of three control plane nodes for quorum.
 
 Applications:
 - [x] Minecraft Proxy + Limbo Server
-- [ ] Web Proxy
+- [x] Web Proxy
 - [ ] Wireguard VPN
 - [x] V2Ray VPN
 - [ ] Immich

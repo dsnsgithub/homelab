@@ -1,20 +1,31 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: traefik-config
+  name: traefik
   namespace: argocd
 spec:
   project: default
-  source:
-    repoURL: https://github.com/dsnsgithub/homelab.git
-    targetRevision: main
-    path: infra/traefik
+  # Multi-source: upstream Helm chart + values file from this repo.
+  # The chart ships the traefik.io CRDs (IngressRoute, Middleware, ...),
+  # which is what was missing when only a k3s HelmChartConfig was applied.
+  sources:
+    - repoURL: https://helm.traefik.io/traefik
+      chart: traefik
+      targetRevision: 41.5.0
+      helm:
+        valueFiles:
+          - $homelab/infra/traefik/values.yaml
+    - repoURL: https://github.com/dsnsgithub/homelab.git
+      targetRevision: main
+      ref: homelab
   destination:
     server: https://kubernetes.default.svc
-    namespace: kube-system
+    namespace: traefik
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=false
+      - CreateNamespace=true
+      # Traefik CRDs are large; server-side apply avoids annotation limits.
+      - ServerSideApply=true
