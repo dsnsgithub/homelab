@@ -48,11 +48,19 @@ jobs:
       - name: Install helm + kubeconform
         run: |
           set -euo pipefail
-          curl -sSL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" \
-            | tar xz -C /tmp
+          # Download to files (never pipe curl into tar): a transient CDN
+          # error page must fail loudly, not produce "gzip: stdin" noise.
+          # The helm sha256 below is pinned for v4.3.0 linux-amd64.
+          curl -sSL --fail --retry 3 --retry-all-errors \
+            "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" \
+            -o /tmp/helm.tar.gz
+          echo "86584a54def73570558f66f5111cc53dfed56689637ae32c1201205d494f54fb  /tmp/helm.tar.gz" | sha256sum -c -
+          tar xzf /tmp/helm.tar.gz -C /tmp
           sudo mv /tmp/linux-amd64/helm /usr/local/bin/helm
-          curl -sSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
-            | tar xz -C /tmp
+          curl -sSL --fail --retry 3 --retry-all-errors \
+            "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            -o /tmp/kubeconform.tar.gz
+          tar xzf /tmp/kubeconform.tar.gz -C /tmp
           sudo mv /tmp/kubeconform /usr/local/bin/kubeconform
           helm version --short
           kubeconform -v
