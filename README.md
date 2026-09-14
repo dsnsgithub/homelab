@@ -2,7 +2,7 @@
 
 Kubernetes GitOps repo for my homelab, managed by ArgoCD.
 
-## Migration Checklist (currently in the process of migration)
+## Migration Checklist (currently a work in progress)
 
 Virtual IPs (created by kube-vip): 
 - `10.3.3.8` (k8s control-plane API)
@@ -36,4 +36,4 @@ Be sure to disable any preinstalled load balancers such as ServiceLB (if using k
 kubectl apply -f argocd/root-app.yaml
 ```
 
-Argo CD will watch files in `argocd/apps/`, with any changes pushed to `main` will be synced within around 3 minutes.
+Argo CD will watch files in `argocd/apps/`, any changes pushed to `main` will be synced/deployed within around 3 minutes.
