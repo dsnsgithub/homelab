@@ -31,8 +31,8 @@ kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubuse
 ```
 Be sure to disable any preinstalled load balancers such as ServiceLB (if using k3s or similar) before deploying this repository.
    
-4. Deploy repo
-```
+3. Deploy repo
+```bash
 kubectl apply -f argocd/root-app.yaml
 ```
 
