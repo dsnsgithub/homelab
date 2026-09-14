@@ -29,6 +29,7 @@ Applications:
 1. Clone Homelab Repository
 ```bash
 git clone https://github.com/dsnsgithub/homelab/
+cd homelab
 ```
 
 2. Install ArgoCD
@@ -43,7 +44,7 @@ Be sure to disable any preinstalled load balancers and proxies such as ServiceLB
 kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/latest/download/controller.yaml
 ```
 
-Install the `kubeseal` CLI locally.
+Install the `kubeseal` CLI locally. Find files with .TEMPLATE.yaml and generate the required secret.
 
 4. Deploy Repository
 ```bash
