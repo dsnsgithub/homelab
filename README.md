@@ -4,7 +4,10 @@ Kubernetes GitOps repo for my homelab, managed by ArgoCD.
 
 ## Migration Checklist (currently in the process of migration)
 
-Virtual IP: `10.3.3.8` (created by kube-vip)
+Virtual IPs (created by kube-vip): 
+- `10.3.3.8` (k8s control-plane API)
+- `10.3.3.9` (argocd LoadBalancer)
+- `10.3.3.10` (Minecraft Proxy LoadBalancer)
 
 Applications (run on a heterogenous cluster of both arm64 and amd64):
 - [x] Minecraft Proxy + Limbo Server

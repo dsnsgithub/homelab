@@ -43,6 +43,10 @@ spec:
           value: "true"
         - name: cp_namespace
           value: kube-system
+        - name: svc_enable
+          value: "true"
+        - name: svc_election
+          value: "true"
         - name: vip_ddns
           value: "false"
         - name: vip_leaderelection
