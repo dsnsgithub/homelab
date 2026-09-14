@@ -30,11 +30,11 @@ permissions:
   contents: read
 
 env:
-  # Helm v3 (final v3, security patches until Feb 2027) — NOT v4: v4 binaries
-  # ship only via get.helm.sh, which 404s from GitHub runners, and ArgoCD's
-  # in-cluster renderer is Helm-3-based, so v3 is the faithful choice here.
-  # Charts use only portable constructs valid on both.
-  HELM_VERSION: v3.22.0
+  # Helm is NOT downloaded: v4+ binaries ship only via get.helm.sh (404s
+  # from GitHub runners) and GitHub releases carry no helm binaries at all
+  # anymore. Instead the whole job runs in the pinned alpine/helm image —
+  # v3.22.0, which also matches ArgoCD's in-cluster renderer. Charts use
+  # only portable constructs valid on both major versions.
   KUBECONFORM_VERSION: v0.6.7
   # Should match (or trail just behind) the cluster's Kubernetes version.
   KUBERNETES_VERSION: 1.30.2
@@ -42,32 +42,35 @@ env:
 jobs:
   preview:
     runs-on: ubuntu-latest
+    container:
+      image: alpine/helm:3.22.0
+      options: --user root
+    defaults:
+      run:
+        shell: bash
     steps:
+      - name: Install tools
+        # First: the image ships only helm. Plain sh here — bash itself is
+        # installed by this step, before checkout (which needs git) runs.
+        # gcompat is load-bearing: JS actions (checkout, upload-artifact)
+        # run node inside this musl-based container.
+        shell: sh
+        run: |
+          set -eu
+          apk add --no-cache bash git python3 py3-yaml curl gcompat ca-certificates
+          helm version --short
+          curl -sSL --fail --retry 3 --retry-all-errors \
+            "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            -o /tmp/kubeconform.tar.gz
+          tar xzf /tmp/kubeconform.tar.gz -C /tmp
+          mv /tmp/kubeconform /usr/local/bin/kubeconform
+          kubeconform -v
+
       - name: Check out
         uses: actions/checkout@v4
         with:
           # Full history so the base-vs-head diff works on PRs.
           fetch-depth: 0
-
-      - name: Install helm + kubeconform
-        run: |
-          set -euo pipefail
-          # Download to files (never pipe curl into tar): a transient CDN
-          # error page must fail loudly, not produce "gzip: stdin" noise.
-          # The helm sha256 below is pinned for v3.22.0 linux-amd64.
-          curl -sSL --fail --retry 3 --retry-all-errors \
-            "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" \
-            -o /tmp/helm.tar.gz
-          echo "1e4ab49e429626cf6c6958d914248b78c9730803c2751b87627e171dc800e7bb  /tmp/helm.tar.gz" | sha256sum -c -
-          tar xzf /tmp/helm.tar.gz -C /tmp
-          sudo mv /tmp/linux-amd64/helm /usr/local/bin/helm
-          curl -sSL --fail --retry 3 --retry-all-errors \
-            "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
-            -o /tmp/kubeconform.tar.gz
-          tar xzf /tmp/kubeconform.tar.gz -C /tmp
-          sudo mv /tmp/kubeconform /usr/local/bin/kubeconform
-          helm version --short
-          kubeconform -v
 
       - name: YAML syntax check (all manifests)
         run: |
