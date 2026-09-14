@@ -1,0 +1,45 @@
+# Wildcard certs for the three apexes. cert-manager solves Cloudflare DNS-01
+# via the letsencrypt-prod ClusterIssuer and stores each cert as a Secret
+# in THIS namespace, where the IngressRoutes reference them. Shared Secrets:
+# every Traefik replica reads the same cert - no acme.json, true HA.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-dsns-dev
+  namespace: web-proxy
+spec:
+  secretName: dsns-wildcard-tls
+  dnsNames:
+    - dsns.dev
+    - "*.dsns.dev"
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-mseung-dev
+  namespace: web-proxy
+spec:
+  secretName: mseung-wildcard-tls
+  dnsNames:
+    - mseung.dev
+    - "*.mseung.dev"
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-seung-dev
+  namespace: web-proxy
+spec:
+  secretName: seung-wildcard-tls
+  dnsNames:
+    - seung.dev
+    - "*.seung.dev"
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer

@@ -1,10 +1,7 @@
-# Traefik IngressRoutes. TLS is terminated at Traefik (10.3.3.12)
-# using wildcard certs from the `letsencrypt` Cloudflare DNS-01 resolver.
-# HTTP on port 80 is redirected globally in HelmChartConfig, so only
+# Traefik IngressRoutes. TLS is terminated at Traefik (10.3.3.12, 2 replicas)
+# using wildcard cert Secrets issued by cert-manager (see certificates.yaml).
+# HTTP on port 80 is redirected globally in Traefik values, so only
 # `websecure` is listed here.
-#
-# Requires Traefik CRDs (bundled with k3s): apiVersion traefik.io/v1alpha1.
-# If your k3s is old (Traefik v2), change to traefik.containo.us/v1alpha1.
 
 # --- *.mseung.dev -> 10.3.3.218:80 ---
 apiVersion: traefik.io/v1alpha1
@@ -24,11 +21,7 @@ spec:
           # passHostHeader defaults to true - required so the downstream
           # proxy on .218 can vhost-route.
   tls:
-    certResolver: letsencrypt
-    domains:
-      - main: mseung.dev
-        sans:
-          - "*.mseung.dev"
+    secretName: mseung-wildcard-tls
 ---
 # --- *.seung.dev -> 10.3.3.218:80 ---
 apiVersion: traefik.io/v1alpha1
@@ -46,11 +39,7 @@ spec:
         - name: lan-218-http
           port: 80
   tls:
-    certResolver: letsencrypt
-    domains:
-      - main: seung.dev
-        sans:
-          - "*.seung.dev"
+    secretName: seung-wildcard-tls
 ---
 # --- code.dsns.dev -> 10.3.3.195:7799 ---
 apiVersion: traefik.io/v1alpha1
@@ -68,11 +57,7 @@ spec:
         - name: code
           port: 7799
   tls:
-    certResolver: letsencrypt
-    domains:
-      - main: dsns.dev
-        sans:
-          - "*.dsns.dev"
+    secretName: dsns-wildcard-tls
 ---
 # --- immich.dsns.dev -> 10.3.3.172:2283 ---
 apiVersion: traefik.io/v1alpha1
@@ -90,11 +75,7 @@ spec:
         - name: immich
           port: 2283
   tls:
-    certResolver: letsencrypt
-    domains:
-      - main: dsns.dev
-        sans:
-          - "*.dsns.dev"
+    secretName: dsns-wildcard-tls
 ---
 # --- vray.dsns.dev -> v2ray-service:10086 ---
 apiVersion: traefik.io/v1alpha1
@@ -112,8 +93,4 @@ spec:
         - name: vray
           port: 10086
   tls:
-    certResolver: letsencrypt
-    domains:
-      - main: dsns.dev
-        sans:
-          - "*.dsns.dev"
+    secretName: dsns-wildcard-tls

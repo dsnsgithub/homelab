@@ -1,17 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: traefik-secret
+  name: cert-manager-config
   namespace: argocd
+  annotations:
+    # Sync after the cert-manager app so the cert-manager.io CRDs exist first.
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
   source:
     repoURL: https://github.com/dsnsgithub/homelab.git
     targetRevision: main
-    path: infra/traefik
+    path: infra/cert-manager
   destination:
     server: https://kubernetes.default.svc
-    namespace: traefik
+    namespace: cert-manager
   syncPolicy:
     automated:
       prune: true

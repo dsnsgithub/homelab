@@ -2,8 +2,15 @@
 # Deployed by ArgoCD into namespace `traefik` - fully declarative,
 # independent of the k3s bundled Traefik (which should stay disabled).
 #
+# TLS certs come from cert-manager Secrets (see apps/web-proxy/certificates.yaml),
+# so Traefik is stateless and runs 2 replicas across nodes. No acme.json.
+#
 # DNS: point A records for *.dsns.dev, *.mseung.dev, *.seung.dev
 # (and apexes) at 10.3.3.12, DNS-only (grey cloud, these are RFC1918).
+
+deployment:
+  # HA: any replica can serve any route, certs are shared Secrets.
+  replicas: 2
 
 # Pin Traefik LoadBalancer to a dedicated kube-vip VIP.
 service:
@@ -12,7 +19,7 @@ service:
 
 ports:
   web:
-    # Global HTTP -> HTTPS redirect. ACME DNS-01 does not need port 80,
+    # Global HTTP -> HTTPS redirect. DNS-01 challenges don't need port 80,
     # so unconditional redirect is safe (unlike HTTP-01).
     http:
       redirections:
@@ -20,45 +27,3 @@ ports:
           to: websecure
           scheme: https
           permanent: true
-
-persistence:
-  enabled: true
-  size: 128Mi
-  # acme.json lives on this PVC. Do NOT lose it or you will hit
-  # Let's Encrypt rate limits on reissue.
-
-certificatesResolvers:
-  letsencrypt:
-    acme:
-      email: dominic@seung.dev
-      storage: /data/acme.json
-      dnsChallenge:
-        provider: cloudflare
-        resolvers:
-          - "1.1.1.1:53"
-          - "1.0.0.1:53"
-        # delayBeforeCheck helps when Cloudflare secondary NS are slow
-        # delayBeforeCheck: 30
-      # Uncomment to test first, then switch to production:
-      # caServer: https://acme-staging-v02.api.letsencrypt.org/directory
-
-env:
-  - name: CF_DNS_API_TOKEN
-    valueFrom:
-      secretKeyRef:
-        name: traefik-cloudflare
-        key: CF_DNS_API_TOKEN
-        optional: false
-
-deployment:
-  initContainers:
-    - name: volume-permissions
-      image: busybox:latest
-      command: ["sh", "-c", "touch /data/acme.json; chmod -v 600 /data/acme.json"]
-      volumeMounts:
-        - mountPath: /data
-          name: data
-
-podSecurityContext:
-  fsGroup: 65532
-  fsGroupChangePolicy: "OnRootMismatch"
