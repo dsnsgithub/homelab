@@ -8,6 +8,7 @@ Virtual IPs (created by kube-vip):
 - `10.3.3.8` (k8s control-plane API)
 - `10.3.3.9` (argocd LoadBalancer)
 - `10.3.3.10` (Minecraft Proxy LoadBalancer)
+- `10.3.3.11` (V2Ray LoadBalancer)
 
 Applications (run on a heterogeneous cluster of both arm64 and amd64):
 - [x] Minecraft Proxy + Limbo Server
