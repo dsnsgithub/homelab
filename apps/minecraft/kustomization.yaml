@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - velocity-secret.sealed.yaml   # generated locally with kubeseal, see README
+  - limbo-deployment.yaml
+  - limbo-service.yaml
+  - mc-proxy-deployment.yaml
+  - mc-proxy-service.yaml
