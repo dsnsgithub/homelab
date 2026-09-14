@@ -7,7 +7,7 @@ Kubernetes GitOps repo for my homelab, managed by ArgoCD.
 Virtual IPs (created by kube-vip): 
 - `10.3.3.8` (k8s control-plane API)
 - `10.3.3.9` (argocd LoadBalancer)
-- `10.3.3.10` (shared LoadBalancer: Minecraft Proxy `25565/TCP, 25577/UDP` + V2Ray `10086/TCP` + Traefik web proxy `80/TCP, 443/TCP`)
+- `10.3.3.10` (shared Minecraft + V2Ray + Traefik LoadBalancer)
 
 kube-vip will elect a leader node to manage a virtual IP, auto detecting the interface to bind to.
 kube-vip has been configured to advertise over ARP and if the leader node goes offline, a new leader will be elected and sends gratuitous ARP to claim the IP.
