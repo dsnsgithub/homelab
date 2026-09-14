@@ -9,7 +9,9 @@ Virtual IP: `10.3.3.8` (created by kube-vip)
 Applications (run on a heterogenous cluster of both arm64 and amd64):
 - [x] Minecraft Proxy + Limbo Server
 - [ ] Web Proxy
-- [ ] VPN Services
+- [ ] Wireguard VPN
+- [ ] V2Ray VPN
+- [ ] Immich
 - [ ] T3 Code
 
 ### Bootstrap ArgoCD with the root app
