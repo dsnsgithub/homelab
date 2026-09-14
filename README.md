@@ -14,7 +14,7 @@ Applications (run on a heterogeneous cluster of both arm64 and amd64):
 - [x] Minecraft Proxy + Limbo Server
 - [ ] Web Proxy
 - [ ] Wireguard VPN
-- [ ] V2Ray VPN
+- [x] V2Ray VPN
 - [ ] Immich
 - [ ] T3 Code
 
