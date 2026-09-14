@@ -88,7 +88,7 @@ Staging uses dummy secrets (`charts/staging-secrets`, same names as prod), not r
 
 Every PR and every push to `main` runs `.github/workflows/argocd-preview.yaml`, which needs no cluster access:
 
-1. `helm lint` plus `helm template` of each chart — rendered from the Application specs themselves (same chart, namespace, and inline `helm.values` ArgoCD uses), for prod apps and the staging set (Helm v4.3.0 pinned).
+1. `helm lint` plus `helm template` of each chart — rendered from the Application specs themselves (same chart, namespace, and inline `helm.values` ArgoCD uses), for prod apps and the staging set (Helm v3.22.0 pinned — matches ArgoCD's renderer).
 2. `kubeconform -strict` schema validation of the rendered output.
 3. Staging isolation checks (no `LoadBalancer`, no `loadBalancerIP`, no prod namespaces, no `SealedSecret`, replicas=1).
 4. A base-vs-head diff stat plus the full rendered manifests as the `rendered-manifests` artifact.

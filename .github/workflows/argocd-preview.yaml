@@ -30,7 +30,11 @@ permissions:
   contents: read
 
 env:
-  HELM_VERSION: v4.3.0
+  # Helm v3 (final v3, security patches until Feb 2027) — NOT v4: v4 binaries
+  # ship only via get.helm.sh, which 404s from GitHub runners, and ArgoCD's
+  # in-cluster renderer is Helm-3-based, so v3 is the faithful choice here.
+  # Charts use only portable constructs valid on both.
+  HELM_VERSION: v3.22.0
   KUBECONFORM_VERSION: v0.6.7
   # Should match (or trail just behind) the cluster's Kubernetes version.
   KUBERNETES_VERSION: 1.30.2
@@ -50,11 +54,11 @@ jobs:
           set -euo pipefail
           # Download to files (never pipe curl into tar): a transient CDN
           # error page must fail loudly, not produce "gzip: stdin" noise.
-          # The helm sha256 below is pinned for v4.3.0 linux-amd64.
+          # The helm sha256 below is pinned for v3.22.0 linux-amd64.
           curl -sSL --fail --retry 3 --retry-all-errors \
             "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" \
             -o /tmp/helm.tar.gz
-          echo "86584a54def73570558f66f5111cc53dfed56689637ae32c1201205d494f54fb  /tmp/helm.tar.gz" | sha256sum -c -
+          echo "1e4ab49e429626cf6c6958d914248b78c9730803c2751b87627e171dc800e7bb  /tmp/helm.tar.gz" | sha256sum -c -
           tar xzf /tmp/helm.tar.gz -C /tmp
           sudo mv /tmp/linux-amd64/helm /usr/local/bin/helm
           curl -sSL --fail --retry 3 --retry-all-errors \
