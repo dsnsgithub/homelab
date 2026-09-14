@@ -1,0 +1,72 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: staging-branches
+  namespace: argocd
+  labels:
+    homelab.dsns.dev/env: staging
+spec:
+  # Ephemeral staging environments: one ArgoCD Application per (app, branch),
+  # each tracking its branch head — so every commit pushed to a non-main
+  # branch is synced to staging automatically. `main` is excluded below;
+  # anything that isn't main is staging. Deleting a branch removes its
+  # staging Application AND its resources (see syncPolicy below).
+  #
+  # Branch naming constraint: names must slug down to a DNS-1123 label
+  # (lowercase alphanumerics + "-"). Use short, lowercase, hyphenated names
+  # like `feature/cool-thing`. Overly long names are truncated to fit.
+  #
+  # Requires a GitHub token Secret in the argocd namespace
+  # (argocd/github-token.TEMPLATE.yaml). `main` is excluded — it is production.
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - list:
+              elements:
+                - app: minecraft
+                  srcPath: apps/minecraft/overlays/staging
+                - app: v2ray
+                  srcPath: apps/v2ray/overlays/staging
+          - scmProvider:
+              github:
+                organization: dsnsgithub
+                repository: homelab
+                tokenRef:
+                  secretName: github-token
+                  key: token
+                allBranches: true
+                cloneProtocol: https
+              filters:
+                - repositoryMatch: homelab
+                  branchMatch: '.+'
+                  excludeBranchMatch: '^(main|HEAD)$'
+              requeueAfterSeconds: 300
+  template:
+    metadata:
+      name: 'staging-{{ .app }}-{{ .branch | replace "/" "-" | replace "_" "-" | replace "." "-" | lower | trunc 40 | trimSuffix "-" }}'
+      labels:
+        homelab.dsns.dev/env: staging
+        homelab.dsns.dev/app: '{{ .app }}'
+        homelab.dsns.dev/branch: '{{ .branch | replace "/" "-" | replace "_" "-" | replace "." "-" | lower | trunc 40 | trimSuffix "-" }}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/dsnsgithub/homelab.git
+        # Follow the branch head so staging always tracks the latest push.
+        targetRevision: '{{ .branch }}'
+        path: '{{ .srcPath }}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'staging-{{ .app }}-{{ .branch | replace "/" "-" | replace "_" "-" | replace "." "-" | lower | trunc 40 | trimSuffix "-" }}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+  syncPolicy:
+    # Deleting a generated Application (e.g. branch deleted) also deletes the
+    # resources it deployed. This is what makes staging fully ephemeral.
+    preserveResourcesOnDeletion: false

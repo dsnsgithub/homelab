@@ -1,0 +1,210 @@
+name: ArgoCD sync preview
+
+# Static answer to "can ArgoCD even sync this?": on every PR and every push
+# to main, render exactly what ArgoCD would render (kustomize build of each
+# app root + each staging overlay), schema-validate it (kubeconform), enforce
+# staging isolation invariants, and upload the rendered manifests + a diff
+# summary. No cluster credentials needed.
+#
+# For a LIVE answer against the real cluster, run locally:
+#   argocd app diff <app-name> --local apps/<app>
+# (see README "Can ArgoCD sync this?").
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'apps/**'
+      - 'infra/**'
+      - 'argocd/**'
+      - '.github/workflows/argocd-preview.yaml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'infra/**'
+      - 'argocd/**'
+      - '.github/workflows/argocd-preview.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  KUSTOMIZE_VERSION: v5.4.3
+  KUBECONFORM_VERSION: v0.6.7
+  # Should match (or trail just behind) the cluster's Kubernetes version.
+  KUBERNETES_VERSION: 1.30.2
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          # Full history so the base-vs-head diff works on PRs.
+          fetch-depth: 0
+
+      - name: Install kustomize + kubeconform
+        run: |
+          set -euo pipefail
+          curl -sSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
+            | tar xz -C /tmp
+          sudo mv /tmp/kustomize /usr/local/bin/kustomize
+          curl -sSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | tar xz -C /tmp
+          sudo mv /tmp/kubeconform /usr/local/bin/kubeconform
+          kustomize version
+          kubeconform -v
+
+      - name: YAML syntax check (all manifests)
+        run: |
+          set -euo pipefail
+          python3 - <<'EOF'
+          import glob, sys
+          import yaml
+          files = sorted(
+              f for f in glob.glob('**/*.yaml', recursive=True)
+              if '/.git/' not in f'/{f}'
+          )
+          errors = 0
+          for f in files:
+              try:
+                  with open(f) as fh:
+                      list(yaml.safe_load_all(fh))
+              except yaml.YAMLError as e:
+                  errors += 1
+                  print(f'::error file={f}::YAML parse error: {e}')
+          print(f'checked {len(files)} YAML files, {errors} errors')
+          sys.exit(1 if errors else 0)
+          EOF
+
+      - name: Render + validate (what ArgoCD would sync)
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/rendered
+          : > /tmp/preview-summary.md
+          {
+            echo "## ArgoCD sync preview"
+            echo ""
+            echo "| Target | Result | Resources |"
+            echo "|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # Every directory ArgoCD points at: prod app roots, infra roots,
+          # and staging overlays. Each has a kustomization.yaml, so
+          # `kustomize build` renders exactly what ArgoCD syncs.
+          TARGETS=$(cat <<'EOF'
+          apps/minecraft|prod app: minecraft (main)
+          apps/v2ray|prod app: v2ray (main)
+          infra/kube-vip|prod infra: kube-vip (main)
+          infra/argocd-server-lb|prod infra: argocd-server-lb (main)
+          apps/minecraft/overlays/staging|staging overlay: minecraft
+          apps/v2ray/overlays/staging|staging overlay: v2ray
+          EOF
+          )
+
+          failures=0
+          while IFS='|' read -r dir label; do
+            [ -n "$dir" ] || continue
+            slug=$(echo "$dir" | tr '/' '-')
+            echo "=== $label ($dir) ==="
+            if kustomize build "$dir" > "/tmp/rendered/${slug}.yaml" 2>"/tmp/rendered/${slug}.build-error.log"; then
+              count=$(grep -c '^kind: ' "/tmp/rendered/${slug}.yaml" || true)
+              if kubeconform -strict -ignore-missing-schemas \
+                  -kubernetes-version "${KUBERNETES_VERSION}" \
+                  -summary "/tmp/rendered/${slug}.yaml" 2>&1 | tee "/tmp/rendered/${slug}.kubeconform.log"; then
+                echo "| $label | :white_check_mark: valid | $count |" >> "$GITHUB_STEP_SUMMARY"
+              else
+                echo "| $label | :x: schema invalid | $count |" >> "$GITHUB_STEP_SUMMARY"
+                failures=$((failures + 1))
+              fi
+            else
+              echo "| $label | :x: kustomize build failed | 0 |" >> "$GITHUB_STEP_SUMMARY"
+              cat "/tmp/rendered/${slug}.build-error.log"
+              failures=$((failures + 1))
+            fi
+          done <<< "$TARGETS"
+
+          echo ""
+          echo "Rendered manifests uploaded as the \`rendered-manifests\` artifact."
+          if [ "$failures" -gt 0 ]; then
+            echo "::error::$failures target(s) failed — ArgoCD would NOT sync cleanly."
+            exit 1
+          fi
+          echo "All targets render and validate — ArgoCD should sync cleanly."
+
+      - name: Staging isolation invariants
+        run: |
+          set -euo pipefail
+          python3 - <<'EOF'
+          import glob, sys
+          import yaml
+
+          # Staging overlays must NEVER be able to disturb prod:
+          # no pinned virtual IPs, no prod/cluster namespaces, no sealed
+          # secrets (strict-scoped, undecryptable elsewhere), no LoadBalancer
+          # Services, and no stray namespace fields (the ApplicationSet's
+          # destination.namespace must win for per-PR isolation).
+          # Checked against the RENDERED output (raw overlay files still
+          # carry prod namespaces until kustomize strips them).
+          PROD_NAMESPACES = {'minecraft', 'v2ray-vpn', 'kube-system', 'argocd', 'default'}
+          failures = []
+
+          def docs(path):
+              with open(path) as fh:
+                  return [d for d in yaml.safe_load_all(fh) if d]
+
+          rendered = sorted(glob.glob('/tmp/rendered/*-overlays-staging.yaml'))
+          assert rendered, 'no rendered staging overlays found'
+          for f in rendered:
+              for d in docs(f):
+                  kind = d.get('kind')
+                  name = (d.get('metadata') or {}).get('name')
+                  ns = (d.get('metadata') or {}).get('namespace')
+                  spec = d.get('spec') or {}
+                  if kind == 'SealedSecret':
+                      failures.append(f'{f}: SealedSecret {name} must not ship in staging')
+                  if ns in PROD_NAMESPACES:
+                      failures.append(f'{f}: {kind}/{name} pins prod namespace {ns!r}')
+                  if ns is not None:
+                      failures.append(f'{f}: {kind}/{name} sets metadata.namespace (must be stripped for per-PR destinations)')
+                  if kind == 'Service' and spec.get('type') == 'LoadBalancer':
+                      failures.append(f'{f}: Service/{name} is LoadBalancer (staging must be ClusterIP)')
+                  if 'loadBalancerIP' in spec:
+                      failures.append(f'{f}: Service/{name} pins loadBalancerIP (would steal a prod VIP)')
+                  if kind == 'Deployment':
+                      replicas = (spec.get('replicas', 1) or 1)
+                      if replicas != 1:
+                          failures.append(f'{f}: Deployment/{name} replicas={replicas} (staging must be 1)')
+
+          if failures:
+              for m in failures:
+                  print(f'::error::{m}')
+              sys.exit(1)
+          print('staging isolation invariants: OK')
+          EOF
+
+      - name: What would sync (base vs head)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "${{ github.base_ref }}"
+          echo "### Changed manifests vs \`${{ github.base_ref }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          git diff --stat "origin/${{ github.base_ref }}...HEAD" -- apps infra argocd >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo ""
+            echo "Full rendered output for this PR is in the \`rendered-manifests\` artifact."
+            echo "For a live server-side diff, run locally: \`argocd app diff <app> --local apps/<app>\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload rendered manifests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-manifests
+          path: /tmp/rendered/
+          if-no-files-found: error

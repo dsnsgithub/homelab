@@ -1,0 +1,27 @@
+# Template only - DO NOT commit a real token here.
+#
+# The staging ApplicationSet (argocd/apps/staging-branch-appset.yaml) discovers
+# branches via the GitHub API, which needs a token. Create it with:
+#
+#   kubectl -n argocd create secret generic github-token \
+#     --from-literal=token=ghp_YOUR_TOKEN
+#
+# Token scopes (repo is public):
+#   - classic PAT: `public_repo` (read-only access is enough)
+#   - fine-grained PAT on dsnsgithub/homelab: Contents: read
+#
+# Rotate by re-running the command above and restarting the ApplicationSet
+# controller (it picks up token changes automatically on next requeue).
+#
+# If you prefer declarative management, copy this file to
+# github-token.plain.yaml (gitignored via *.plain.yaml), replace the
+# placeholder, and apply it locally — never commit the real value.
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: github-token
+  namespace: argocd
+type: Opaque
+stringData:
+  token: REPLACE_ME_GITHUB_TOKEN
