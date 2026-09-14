@@ -10,7 +10,7 @@ spec:
     - match: HostRegexp(`.+\.mseung\.dev`) || Host(`mseung.dev`)
       kind: Rule
       services:
-        - name: lan-218-http
+        - name: max-proxy
           port: 80
   tls:
     secretName: mseung-wildcard-tls
@@ -27,7 +27,7 @@ spec:
     - match: HostRegexp(`.+\.seung\.dev`) || Host(`seung.dev`)
       kind: Rule
       services:
-        - name: lan-218-http
+        - name: max-proxy
           port: 80
   tls:
     secretName: seung-wildcard-tls
