@@ -1,0 +1,15 @@
+deployment:
+  replicas: 2
+
+service:
+  spec:
+    loadBalancerIP: "10.3.3.12"
+
+ports:
+  web:
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
