@@ -1,0 +1,5 @@
+apiVersion: v2
+name: kube-vip
+description: kube-vip virtual IP manager (Homelab)
+type: application
+version: 1.0.0

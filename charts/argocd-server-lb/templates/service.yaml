@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-server-lb
+  labels:
+    app.kubernetes.io/name: argocd-server-lb
+spec:
+  type: LoadBalancer
+  loadBalancerIP: {{ .Values.loadBalancerIP }}
+  selector:
+    app.kubernetes.io/name: argocd-server
+  ports:
+    {{- toYaml .Values.ports | nindent 4 }}

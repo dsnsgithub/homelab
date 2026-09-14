@@ -1,28 +1,27 @@
 name: ArgoCD sync preview
 
 # Static answer to "can ArgoCD even sync this?": on every PR and every push
-# to main, render exactly what ArgoCD would render (kustomize build of each
-# app root + each staging overlay), schema-validate it (kubeconform), enforce
-# staging isolation invariants, and upload the rendered manifests + a diff
-# summary. No cluster credentials needed.
+# to main, lint + render exactly what ArgoCD would render — by reading the
+# same Application specs ArgoCD reads (chart path + destination namespace +
+# inline helm.values), for prod apps and for the staging ApplicationSet —
+# then schema-validate (kubeconform), enforce staging isolation invariants,
+# and upload the rendered manifests + a diff summary. No cluster needed.
 #
 # For a LIVE answer against the real cluster, run locally:
-#   argocd app diff <app-name> --local apps/<app>
+#   argocd app diff <app-name> --local charts/<app>
 # (see README "Can ArgoCD sync this?").
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
-      - 'apps/**'
-      - 'infra/**'
+      - 'charts/**'
       - 'argocd/**'
       - '.github/workflows/argocd-preview.yaml'
   push:
     branches: [main]
     paths:
-      - 'apps/**'
-      - 'infra/**'
+      - 'charts/**'
       - 'argocd/**'
       - '.github/workflows/argocd-preview.yaml'
   workflow_dispatch:
@@ -31,7 +30,7 @@ permissions:
   contents: read
 
 env:
-  KUSTOMIZE_VERSION: v5.4.3
+  HELM_VERSION: v4.3.0
   KUBECONFORM_VERSION: v0.6.7
   # Should match (or trail just behind) the cluster's Kubernetes version.
   KUBERNETES_VERSION: 1.30.2
@@ -46,16 +45,16 @@ jobs:
           # Full history so the base-vs-head diff works on PRs.
           fetch-depth: 0
 
-      - name: Install kustomize + kubeconform
+      - name: Install helm + kubeconform
         run: |
           set -euo pipefail
-          curl -sSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
+          curl -sSL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" \
             | tar xz -C /tmp
-          sudo mv /tmp/kustomize /usr/local/bin/kustomize
+          sudo mv /tmp/linux-amd64/helm /usr/local/bin/helm
           curl -sSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
             | tar xz -C /tmp
           sudo mv /tmp/kubeconform /usr/local/bin/kubeconform
-          kustomize version
+          helm version --short
           kubeconform -v
 
       - name: YAML syntax check (all manifests)
@@ -64,9 +63,11 @@ jobs:
           python3 - <<'EOF'
           import glob, sys
           import yaml
+          # Chart templates contain Go templating and are not plain YAML —
+          # they are validated by `helm lint` + `helm template` below.
           files = sorted(
               f for f in glob.glob('**/*.yaml', recursive=True)
-              if '/.git/' not in f'/{f}'
+              if '/.git/' not in f'/{f}' and '/templates/' not in f'/{f}'
           )
           errors = 0
           for f in files:
@@ -80,60 +81,95 @@ jobs:
           sys.exit(1 if errors else 0)
           EOF
 
-      - name: Render + validate (what ArgoCD would sync)
+      - name: Lint + render + validate (what ArgoCD would sync)
         run: |
           set -euo pipefail
           mkdir -p /tmp/rendered
-          : > /tmp/preview-summary.md
-          {
-            echo "## ArgoCD sync preview"
-            echo ""
-            echo "| Target | Result | Resources |"
-            echo "|---|---|---|"
-          } >> "$GITHUB_STEP_SUMMARY"
+          python3 - <<'EOF'
+          import glob, os, subprocess, sys
+          import yaml
 
-          # Every directory ArgoCD points at: prod app roots, infra roots,
-          # and staging overlays. Each has a kustomization.yaml, so
-          # `kustomize build` renders exactly what ArgoCD syncs.
-          TARGETS=$(cat <<'EOF'
-          apps/minecraft|prod app: minecraft (main)
-          apps/v2ray|prod app: v2ray (main)
-          infra/kube-vip|prod infra: kube-vip (main)
-          infra/argocd-server-lb|prod infra: argocd-server-lb (main)
-          apps/minecraft/overlays/staging|staging overlay: minecraft
-          apps/v2ray/overlays/staging|staging overlay: v2ray
+          K8S_VERSION = os.environ['KUBERNETES_VERSION']
+          SUMMARY = os.environ['GITHUB_STEP_SUMMARY']
+          failures = []
+          out_lines = ["## ArgoCD sync preview", "", "| Target | Result | Resources |",
+                       "|---|---|---|"]
+
+          def sh(cmd, **kw):
+              return subprocess.run(cmd, capture_output=True, text=True, **kw)
+
+          def kubeconform(path, label):
+              count = sum(1 for line in open(path) if line.startswith('kind: '))
+              r = sh(['kubeconform', '-strict', '-ignore-missing-schemas',
+                      '-kubernetes-version', K8S_VERSION, '-summary', path])
+              print(r.stdout, end='')
+              if r.returncode == 0:
+                  out_lines.append(f"| {label} | :white_check_mark: valid | {count} |")
+              else:
+                  print(r.stderr, end='')
+                  out_lines.append(f"| {label} | :x: schema invalid | {count} |")
+                  failures.append(label)
+
+          def render(release, chart, namespace, values_str, outfile, label):
+              # values helper files go to /tmp/vals so the uploaded artifact
+              # holds only rendered manifests.
+              os.makedirs('/tmp/vals', exist_ok=True)
+              cmd = ['helm', 'template', release, chart, '--namespace', namespace]
+              if values_str:
+                  vals_path = os.path.join('/tmp/vals', os.path.basename(outfile) + '.values.yaml')
+                  open(vals_path, 'w').write(values_str)
+                  cmd += ['-f', vals_path]
+              r = sh(cmd)
+              if r.returncode != 0:
+                  print(r.stderr, end='')
+                  out_lines.append(f"| {label} | :x: helm template failed | 0 |")
+                  failures.append(label)
+                  return
+              open(outfile, 'w').write(r.stdout)
+              kubeconform(outfile, label)
+
+          # Every chart must lint clean, standalone.
+          for chart in sorted(glob.glob('charts/*/Chart.yaml')):
+              r = sh(['helm', 'lint', os.path.dirname(chart)])
+              print(r.stdout, end='')
+              if r.returncode != 0:
+                  print(r.stderr, end='')
+                  out_lines.append(f"| lint {os.path.dirname(chart)} | :x: helm lint failed | 0 |")
+                  failures.append(f"lint {chart}")
+
+          # Prod: render from the Application specs themselves — same chart,
+          # same namespace, same inline helm.values ArgoCD uses.
+          for app_file in sorted(glob.glob('argocd/apps/*-app.yaml')):
+              app = yaml.safe_load(open(app_file))
+              source = (app.get('spec') or {}).get('source') or {}
+              if not str(source.get('path', '')).startswith('charts/'):
+                  continue
+              name = app['metadata']['name']
+              ns = (app.get('spec') or {}).get('destination', {}).get('namespace', name)
+              values = ((source.get('helm') or {}).get('values'))
+              render(name, source['path'], ns, values,
+                     f"/tmp/rendered/{name}.yaml", f"prod: {name}")
+
+          # Staging: render from the ApplicationSet template — same charts,
+          # same shared helm.values, one shared check namespace (mirrors the
+          # shared per-branch namespace design).
+          appset = yaml.safe_load(open('argocd/apps/staging-branch-appset.yaml'))
+          matrix = appset['spec']['generators'][0]['matrix']['generators']
+          elements = next(g['list']['elements'] for g in matrix if 'list' in g)
+          staging_values = ((appset['spec']['template']['spec']['source'].get('helm') or {}).get('values'))
+          for el in elements:
+              render(f"staging-{el['app']}-ci", el['chart'], 'staging-ci-check',
+                     staging_values, f"/tmp/rendered/{el['app']}.staging.yaml",
+                     f"staging: {el['app']}")
+
+          with open(SUMMARY, 'a') as fh:
+              fh.write('\n'.join(out_lines) + '\n')
+          print("Rendered manifests uploaded as the `rendered-manifests` artifact.")
+          if failures:
+              print(f"::error::{len(failures)} target(s) failed — ArgoCD would NOT sync cleanly: {failures}")
+              sys.exit(1)
+          print("All targets render and validate — ArgoCD should sync cleanly.")
           EOF
-          )
-
-          failures=0
-          while IFS='|' read -r dir label; do
-            [ -n "$dir" ] || continue
-            slug=$(echo "$dir" | tr '/' '-')
-            echo "=== $label ($dir) ==="
-            if kustomize build "$dir" > "/tmp/rendered/${slug}.yaml" 2>"/tmp/rendered/${slug}.build-error.log"; then
-              count=$(grep -c '^kind: ' "/tmp/rendered/${slug}.yaml" || true)
-              if kubeconform -strict -ignore-missing-schemas \
-                  -kubernetes-version "${KUBERNETES_VERSION}" \
-                  -summary "/tmp/rendered/${slug}.yaml" 2>&1 | tee "/tmp/rendered/${slug}.kubeconform.log"; then
-                echo "| $label | :white_check_mark: valid | $count |" >> "$GITHUB_STEP_SUMMARY"
-              else
-                echo "| $label | :x: schema invalid | $count |" >> "$GITHUB_STEP_SUMMARY"
-                failures=$((failures + 1))
-              fi
-            else
-              echo "| $label | :x: kustomize build failed | 0 |" >> "$GITHUB_STEP_SUMMARY"
-              cat "/tmp/rendered/${slug}.build-error.log"
-              failures=$((failures + 1))
-            fi
-          done <<< "$TARGETS"
-
-          echo ""
-          echo "Rendered manifests uploaded as the \`rendered-manifests\` artifact."
-          if [ "$failures" -gt 0 ]; then
-            echo "::error::$failures target(s) failed — ArgoCD would NOT sync cleanly."
-            exit 1
-          fi
-          echo "All targets render and validate — ArgoCD should sync cleanly."
 
       - name: Staging isolation invariants
         run: |
@@ -142,13 +178,10 @@ jobs:
           import glob, sys
           import yaml
 
-          # Staging overlays must NEVER be able to disturb prod:
+          # Staging renders must NEVER be able to disturb prod:
           # no pinned virtual IPs, no prod/cluster namespaces, no sealed
           # secrets (strict-scoped, undecryptable elsewhere), no LoadBalancer
-          # Services, and no stray namespace fields (the ApplicationSet's
-          # destination.namespace must win for per-PR isolation).
-          # Checked against the RENDERED output (raw overlay files still
-          # carry prod namespaces until kustomize strips them).
+          # Services, and single replicas.
           PROD_NAMESPACES = {'minecraft', 'v2ray-vpn', 'kube-system', 'argocd', 'default'}
           failures = []
 
@@ -156,8 +189,8 @@ jobs:
               with open(path) as fh:
                   return [d for d in yaml.safe_load_all(fh) if d]
 
-          rendered = sorted(glob.glob('/tmp/rendered/*-overlays-staging.yaml'))
-          assert rendered, 'no rendered staging overlays found'
+          rendered = sorted(glob.glob('/tmp/rendered/*.staging.yaml'))
+          assert rendered, 'no rendered staging charts found'
           for f in rendered:
               for d in docs(f):
                   kind = d.get('kind')
@@ -168,8 +201,6 @@ jobs:
                       failures.append(f'{f}: SealedSecret {name} must not ship in staging')
                   if ns in PROD_NAMESPACES:
                       failures.append(f'{f}: {kind}/{name} pins prod namespace {ns!r}')
-                  if ns is not None:
-                      failures.append(f'{f}: {kind}/{name} sets metadata.namespace (must be stripped for per-PR destinations)')
                   if kind == 'Service' and spec.get('type') == 'LoadBalancer':
                       failures.append(f'{f}: Service/{name} is LoadBalancer (staging must be ClusterIP)')
                   if 'loadBalancerIP' in spec:
@@ -193,12 +224,12 @@ jobs:
           git fetch --no-tags origin "${{ github.base_ref }}"
           echo "### Changed manifests vs \`${{ github.base_ref }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          git diff --stat "origin/${{ github.base_ref }}...HEAD" -- apps infra argocd >> "$GITHUB_STEP_SUMMARY" || true
+          git diff --stat "origin/${{ github.base_ref }}...HEAD" -- charts argocd >> "$GITHUB_STEP_SUMMARY" || true
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           {
             echo ""
             echo "Full rendered output for this PR is in the \`rendered-manifests\` artifact."
-            echo "For a live server-side diff, run locally: \`argocd app diff <app> --local apps/<app>\`"
+            echo "For a live server-side diff, run locally: \`argocd app diff <app> --local charts/<app>\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload rendered manifests

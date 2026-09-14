@@ -1,0 +1,17 @@
+# Neutral defaults — safe to render anywhere. There is deliberately NO
+# per-environment branching in this chart: environments inject their specifics
+# (e.g. prod's pinned virtual IP) through the Application spec's helm.values.
+# The namespace always comes from the release (ArgoCD destination.namespace).
+replicaCount: 2
+
+proxy:
+  image: itzg/mc-proxy:java25
+  minecraftVersion: "26.2"
+  service:
+    # ClusterIP default; prod pins LoadBalancer + loadBalancerIP via helm.values.
+    type: ClusterIP
+
+limbo:
+  image: ghcr.io/quozul/picolimbo:latest
+  service:
+    type: ClusterIP

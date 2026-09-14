@@ -3,12 +3,23 @@ kind: Application
 metadata:
   name: v2ray
   namespace: argocd
+  annotations:
+    notifications.argoproj.io/subscribe.on-sync-running.github: dsnsgithub/homelab
+    notifications.argoproj.io/subscribe.on-sync-succeeded.github: dsnsgithub/homelab
+    notifications.argoproj.io/subscribe.on-sync-failed.github: dsnsgithub/homelab
 spec:
   project: default
   source:
     repoURL: https://github.com/dsnsgithub/homelab.git
     targetRevision: main
-    path: apps/v2ray
+    path: charts/v2ray
+    helm:
+      # Prod environment input: pin the virtual IP. Chart defaults are
+      # neutral (ClusterIP); the LB pin lives here, next to the destination.
+      values: |
+        service:
+          type: LoadBalancer
+          loadBalancerIP: 10.3.3.11
   destination:
     server: https://kubernetes.default.svc
     namespace: v2ray-vpn
@@ -18,3 +29,12 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+  # The notifications controller records what it sent in
+  # `notified.notifications.argoproj.io/*` annotations on the Application
+  # object. Ignore those or the root app would see phantom drift and flap
+  # between OutOfSync and Synced on every notification.
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Application
+      jqPathExpressions:
+        - '.metadata.annotations | with_entries(select(.key | startswith("notified.notifications.argoproj.io")))'

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: minecraft-secrets
+description: Prod SealedSecret for Minecraft (Homelab) — deployed to prod namespaces only
+type: application
+version: 1.0.0

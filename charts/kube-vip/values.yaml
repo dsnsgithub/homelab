@@ -1,0 +1,18 @@
+# Production values. Deployed to kube-system.
+image: ghcr.io/kube-vip/kube-vip:v1.0.4
+
+# Control-plane API virtual IP.
+address: 10.3.3.8
+
+# MIGRATION NOTE (Talos): Talos owns the API VIP natively via the interface
+# `vip` stanza in bootstrap/talos/nodeN.yaml. After migrating nodes to Talos,
+# set controlPlane.enabled=false here (keep services enabled for the
+# LoadBalancer IPs) — otherwise two systems ARP for 10.3.3.8.
+controlPlane:
+  enabled: true
+  port: "6443"
+  namespace: kube-system
+
+services:
+  enabled: true
+  enableElection: true

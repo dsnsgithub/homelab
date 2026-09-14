@@ -1,0 +1,8 @@
+# Production values. Deployed to the argocd namespace.
+github:
+  apiUrl: https://api.github.com
+  # Resolved by the notifications controller from the `github-token` key of
+  # the `argocd-notifications-secret` Secret (created manually — see
+  # github-pat.TEMPLATE.yaml). Kept as a literal `$...` reference here:
+  # values files are never parsed as templates, so this is safe.
+  token: $github-token

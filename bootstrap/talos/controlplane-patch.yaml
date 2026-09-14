@@ -1,0 +1,35 @@
+# Shared control-plane patch. Applied at `talosctl gen config` time via
+# --config-patch-control-plane (see gen-config.sh). Per-node identity
+# (hostname, address) is NOT here — it lives in nodeN.yaml and is applied
+# later with `talosctl apply --config-patch` (see apply-node.sh), because
+# `gen config` produces a single shared controlplane.yaml.
+machine:
+  time:
+    servers:
+      - time.cloudflare.com
+  network:
+    nameservers:
+      - 1.1.1.1
+      - 1.0.0.1
+  install:
+    # MUST match TALOS_VERSION in bootstrap/versions.env (and the talosctl
+    # binary you generate with). gen-config.sh refuses version skew.
+    image: ghcr.io/siderolabs/installer:v1.14.0
+cluster:
+  # 3 control-plane nodes that also run workloads (no dedicated workers).
+  allowSchedulingOnControlPlanes: true
+  apiServer:
+    certSANs:
+      # Talos serves the API on the VIP; clients must trust it.
+      - 10.3.3.8
+  # Day-1 platform, installed automatically once the cluster is up.
+  # Pinned version, same as ARGOCD_VERSION in bootstrap/versions.env.
+  # Day-1 HERE ends: sealed-secrets + root app are applied by
+  # bootstrap/bootstrap.sh (they need ordering the extraManifests
+  # mechanism can't express).
+  extraManifests:
+    - https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.2/manifests/install.yaml
+  network:
+    cni:
+      # Talos default. Explicit so the choice is recorded in git.
+      name: flannel

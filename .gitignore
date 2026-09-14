@@ -1,1 +1,14 @@
 *.plain.yaml
+# Talos generated output (contains certs/keys) — the patches + versions.env
+# are the source of truth, regenerate with bootstrap/talos/gen-config.sh.
+talosconfig
+bootstrap/talos/clusterconfig/
+# SOPS age private keys must never be committed (public recipients live in .sops.yaml).
+*.agekey
+age.key
+**/.age.key
+# machines/ holds SOPS-encrypted machine configs (*.sops.yaml, committed)
+# plus throwaway plaintext staging (never committed).
+bootstrap/talos/machines/*
+!bootstrap/talos/machines/*.sops.yaml
+!bootstrap/talos/machines/.gitkeep

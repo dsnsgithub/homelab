@@ -6,11 +6,16 @@ metadata:
   labels:
     homelab.dsns.dev/env: staging
 spec:
-  # Ephemeral staging environments: one ArgoCD Application per (app, branch),
-  # each tracking its branch head — so every commit pushed to a non-main
-  # branch is synced to staging automatically. `main` is excluded below;
-  # anything that isn't main is staging. Deleting a branch removes its
-  # staging Application AND its resources (see syncPolicy below).
+  # Ephemeral staging environments: each non-main branch gets one shared
+  # `staging-<branch>` namespace containing the app charts plus dummy
+  # credentials — every commit pushed is synced automatically. `main` is
+  # excluded below; anything that isn't main is staging. Deleting a branch
+  # removes its staging Applications AND their resources (see syncPolicy).
+  #
+  # Mechanics note: the charts are environment-blind (no staging branches in
+  # templates, no values-staging.yaml). The ONLY staging-specific input is the
+  # inline helm.values below — single replica; everything else (ClusterIP
+  # defaults, no pinned IPs, dummy secrets chart) is safe by construction.
   #
   # Branch naming constraint: names must slug down to a DNS-1123 label
   # (lowercase alphanumerics + "-"). Use short, lowercase, hyphenated names
@@ -26,9 +31,11 @@ spec:
           - list:
               elements:
                 - app: minecraft
-                  srcPath: apps/minecraft/overlays/staging
+                  chart: charts/minecraft
                 - app: v2ray
-                  srcPath: apps/v2ray/overlays/staging
+                  chart: charts/v2ray
+                - app: secrets
+                  chart: charts/staging-secrets
           - scmProvider:
               github:
                 organization: dsnsgithub
@@ -50,16 +57,32 @@ spec:
         homelab.dsns.dev/env: staging
         homelab.dsns.dev/app: '{{ .app }}'
         homelab.dsns.dev/branch: '{{ .branch | replace "/" "-" | replace "_" "-" | replace "." "-" | lower | trunc 40 | trimSuffix "-" }}'
+      annotations:
+        # Every staging app reports its sync progress as commit statuses on
+        # the branch-head commit it tracks — pending while syncing,
+        # success/failure after. That commit is the PR head, so progress
+        # shows up directly on the PR. Outbound only: the in-cluster
+        # controller calls api.github.com, nothing is exposed inbound.
+        notifications.argoproj.io/subscribe.on-sync-running.github: dsnsgithub/homelab
+        notifications.argoproj.io/subscribe.on-sync-succeeded.github: dsnsgithub/homelab
+        notifications.argoproj.io/subscribe.on-sync-failed.github: dsnsgithub/homelab
     spec:
       project: default
       source:
         repoURL: https://github.com/dsnsgithub/homelab.git
         # Follow the branch head so staging always tracks the latest push.
         targetRevision: '{{ .branch }}'
-        path: '{{ .srcPath }}'
+        path: '{{ .chart }}'
+        helm:
+          # The single staging override: one replica. Unused keys are ignored
+          # by Helm, so this same block serves the workload charts and the
+          # secrets chart. Everything else staging-safe lives in chart defaults.
+          values: |
+            replicaCount: 1
       destination:
         server: https://kubernetes.default.svc
-        namespace: 'staging-{{ .app }}-{{ .branch | replace "/" "-" | replace "_" "-" | replace "." "-" | lower | trunc 40 | trimSuffix "-" }}'
+        # One shared namespace per branch (workloads + dummy secrets together).
+        namespace: 'staging-{{ .branch | replace "/" "-" | replace "_" "-" | replace "." "-" | lower | trunc 40 | trimSuffix "-" }}'
       syncPolicy:
         automated:
           prune: true

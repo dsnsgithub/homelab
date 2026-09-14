@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: v2ray-service
+spec:
+  type: {{ .Values.service.type }}
+  {{- if .Values.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.service.loadBalancerIP }}
+  {{- end }}
+  selector:
+    app: v2ray
+  ports:
+  - name: v2ray
+    port: 10086
+    targetPort: 10086

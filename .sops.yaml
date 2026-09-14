@@ -1,0 +1,15 @@
+# SOPS creation rules: full Talos machine configs live in git ENCRYPTED so
+# the OS layer is as declarative as everything above it.
+#
+# Setup (once): generate an age key, keep the PRIVATE half somewhere safe
+# (password manager + encrypted USB — it decrypts your entire cluster
+# identity), and put the PUBLIC recipient below:
+#
+#   age-keygen -o ~/.config/sops/age/keys.txt   # prints "public key: age1..."
+#
+# Only *.sops.yaml under machines/ is committable (see .gitignore) — the
+# rule below matches exactly those paths.
+# Flow: bootstrap/talos/README.md ("Fully declarative machine configs").
+creation_rules:
+  - path_regex: bootstrap/talos/machines/.*\.yaml$
+    age: TODO_PASTE_AGE_PUBLIC_RECIPIENT_HERE

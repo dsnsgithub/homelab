@@ -1,0 +1,19 @@
+# Per-node identity patch for control-plane node 1. Applied at install time:
+#   ./apply-node.sh node1.yaml <this node's maintenance-mode IP>
+# TODO: adjust interface name, addresses, gateway and install disk to your LAN.
+machine:
+  network:
+    hostname: talos-cp-1
+    interfaces:
+      - interface: eth0
+        addresses:
+          - 10.3.3.21/24
+        routes:
+          - network: 0.0.0.0/0
+            gateway: 10.3.3.1
+        # The shared 10.3.3.8 API VIP, owned natively by Talos. One node
+        # holds it; the rest take over automatically on failure.
+        vip:
+          ip: 10.3.3.8
+  install:
+    disk: /dev/sda

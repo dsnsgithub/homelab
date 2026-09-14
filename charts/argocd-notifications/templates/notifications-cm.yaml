@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-notifications-cm
+data:
+  # GitHub service used by every
+  # `notifications.argoproj.io/subscribe.*.github: dsnsgithub/homelab`
+  # annotation in argocd/apps/. The in-cluster notifications controller reads
+  # this and calls OUT to api.github.com — GitHub never talks inbound to the
+  # homelab, so nothing needs to be exposed.
+  #
+  # NOTE: this ConfigMap already exists from the upstream ArgoCD install
+  # (near-empty). This app takes ownership of it GitOps-style. Re-applying
+  # the upstream install.yaml would reset it — re-sync this app afterwards.
+  service.github: |
+    apiUrl: {{ .Values.github.apiUrl }}
+    token: {{ .Values.github.token }}

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: argocd-server-lb
+description: LoadBalancer Service exposing the ArgoCD server (Homelab)
+type: application
+version: 1.0.0

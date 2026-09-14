@@ -1,0 +1,99 @@
+# Dummy staging credentials, one Secret per staged app. Prod SealedSecrets
+# are strict-scoped to their namespace and cannot decrypt elsewhere, so each
+# staging namespace gets placeholder config under the SAME names — workloads
+# mount them unchanged. Shapes mirror the per-chart *.TEMPLATE.yaml files.
+# Need real staging secrets? Re-seal with --scope namespace-wide.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: velocity-config
+type: Opaque
+stringData:
+  velocity.toml: |
+    config-version = "2.8"
+    bind = "0.0.0.0:25577"
+    motd = "STAGING - mc.dsns.dev"
+    show-max-players = 10
+    online-mode = false
+    force-key-authentication = false
+    prevent-client-proxy-connections = false
+    player-info-forwarding-mode = "MODERN"
+    forwarding-secret-file = "forwarding.secret"
+    announce-forge = false
+
+    [servers]
+    limbo = "limbo-service:25565"
+    try = ["limbo"]
+  forwarding.secret: |
+    staging-dummy-forwarding-secret
+  server.toml: |
+    welcome_message = "STAGING environment"
+    action_bar = "STAGING environment"
+
+    default_game_mode = "survival"
+
+    [forwarding]
+    method = "MODERN"
+    secret = "staging-dummy-forwarding-secret"
+
+    [tab_list]
+    enabled = false
+
+    [boss_bar]
+    enabled = false
+
+    [title]
+    enabled = false
+
+    [world]
+    spawn_position = [19.5, 16.0, 22.5]
+    spawn_rotation = [-90.0, 0.0]
+    dimension = "overworld"
+    time = "day"
+
+    [world.experimental]
+    view_distance = 4
+    schematic_file = "spawn.schem"
+    lock_time = true
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: v2ray-config
+type: Opaque
+stringData:
+  config.json: |
+    {
+      "dns": {
+        "servers": [
+          "https://dns.adguard.com"
+        ]
+      },
+      "inbounds": [
+        {
+          "port": 10086,
+          "protocol": "vmess",
+          "settings": {
+            "clients": [
+              {
+                "alterId": 64,
+                "id": "00000000-0000-0000-0000-000000000000"
+              }
+            ]
+          },
+          "streamSettings": {
+            "network": "ws",
+            "security": "none",
+            "wsSettings": {
+              "path": "/dsns"
+            }
+          }
+        }
+      ],
+      "outbounds": [
+        {
+          "protocol": "freedom",
+          "settings": {}
+        }
+      ]
+    }

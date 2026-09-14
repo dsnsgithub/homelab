@@ -1,0 +1,35 @@
+# Template only - DO NOT commit a real token here.
+#
+# The notifications controller posts commit statuses to GitHub as
+# `argocd/<trigger>` checks (pending while syncing, success/failure after).
+# It authenticates with this Secret:
+#
+#   1. Copy this file:
+#        cp charts/argocd-notifications/github-pat.TEMPLATE.yaml \
+#           charts/argocd-notifications/github-pat.plain.yaml
+#      (*.plain.yaml is gitignored — the real token can never be committed.)
+#   2. Replace REPLACE_ME_GITHUB_PAT with your token.
+#   3. Apply locally:
+#        kubectl apply -f charts/argocd-notifications/github-pat.plain.yaml
+#
+# Token scopes (repo is public):
+#   - classic PAT: `repo:status` (or `public_repo`, which covers statuses too)
+#   - fine-grained PAT on dsnsgithub/homelab: Commit statuses: Read and write
+#
+# Tip: one PAT can serve both this Secret and the `github-token` Secret used
+# for branch discovery — just give it Contents: read + commit-status scopes
+# and paste the same value into both.
+#
+# Rotate by editing github-pat.plain.yaml and re-applying; the controller
+# picks up Secret changes without a restart.
+
+apiVersion: v1
+kind: Secret
+metadata:
+  # Name is fixed: the notifications controller reads `$github-token` from
+  # the Secret named `argocd-notifications-secret` by default.
+  name: argocd-notifications-secret
+  namespace: argocd
+type: Opaque
+stringData:
+  github-token: REPLACE_ME_GITHUB_PAT
