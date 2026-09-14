@@ -3,7 +3,7 @@ deployment:
 
 service:
   spec:
-    loadBalancerIP: "10.3.3.12"
+    loadBalancerIP: "10.3.3.10"
 
 ports:
   web:
