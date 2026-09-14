@@ -3,5 +3,4 @@ kind: Kustomization
 
 resources:
   - helmchartconfig.yaml
-  # After sealing, add:
-  # - cloudflare-secret.sealed.yaml
+  - cloudflare-secret.sealed.yaml
