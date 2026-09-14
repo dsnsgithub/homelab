@@ -25,13 +25,14 @@ git clone https://github.com/dsnsgithub/homelab/
 ```
 
 2. Install ArgoCD
-```
+```bash
 kubectl create namespace argocd
 kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
 Be sure to disable any preinstalled load balancers such as ServiceLB (if using k3s or similar) before deploying this repository.
    
 4. Deploy repo
+```
 kubectl apply -f argocd/root-app.yaml
 ```
 
