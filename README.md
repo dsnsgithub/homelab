@@ -10,7 +10,12 @@ Virtual IPs (created by kube-vip):
 - `10.3.3.10` (Minecraft Proxy LoadBalancer)
 - `10.3.3.11` (V2Ray LoadBalancer)
 
-Applications (run on a heterogeneous cluster of both arm64 and amd64):
+kube-vip will elect a leader node to manage a virtual IP, auto detecting the interface to bind to.
+kube-vip has been configured to advertise over ARP and if the leader node goes offline, a new leader will be elected and sends gratuitous ARP to claim the IP.
+
+This configuration expects a minimum of three control plane nodes for quorum.
+
+Applications:
 - [x] Minecraft Proxy + Limbo Server
 - [ ] Web Proxy
 - [ ] Wireguard VPN
@@ -20,7 +25,7 @@ Applications (run on a heterogeneous cluster of both arm64 and amd64):
 
 ## Deploy Homelab onto existing Kubernetes cluster
 
-1. Clone Homelab Repo
+1. Clone Homelab Repository
 ```bash
 git clone https://github.com/dsnsgithub/homelab/
 ```
@@ -32,7 +37,7 @@ kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubuse
 ```
 Be sure to disable any preinstalled load balancers such as ServiceLB (if using k3s or similar) before deploying this repository.
    
-3. Deploy repo
+3. Deploy Repository
 ```bash
 kubectl apply -f argocd/root-app.yaml
 ```
