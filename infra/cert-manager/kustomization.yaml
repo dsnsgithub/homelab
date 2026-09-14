@@ -3,5 +3,4 @@ kind: Kustomization
 
 resources:
   - clusterissuer.yaml
-  # After sealing for the cert-manager namespace, add:
-  # - cloudflare-secret.sealed.yaml
+  - cloudflare-secret.sealed.yaml
