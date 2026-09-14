@@ -13,7 +13,7 @@ spec:
 apiVersion: discovery.k8s.io/v1
 kind: EndpointSlice
 metadata:
-  name: max-proxy-manual
+  name: max-proxy
   namespace: web-proxy
   labels:
     kubernetes.io/service-name: max-proxy
@@ -41,7 +41,7 @@ spec:
 apiVersion: discovery.k8s.io/v1
 kind: EndpointSlice
 metadata:
-  name: code-manual
+  name: code
   namespace: web-proxy
   labels:
     kubernetes.io/service-name: code
@@ -69,7 +69,7 @@ spec:
 apiVersion: discovery.k8s.io/v1
 kind: EndpointSlice
 metadata:
-  name: immich-manual
+  name: immich
   namespace: web-proxy
   labels:
     kubernetes.io/service-name: immich
