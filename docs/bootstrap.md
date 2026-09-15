@@ -12,11 +12,11 @@ At least 3 Talos nodes are required (the etcd quorum minimum; every node is a sc
 
 ## 0. Build Talos ISOs and Boot the VMs
 
-Build one `v1.14.0` schematic per CPU architecture in the Talos Image Factory (`https://factory.talos.dev`), adding system extensions as needed: arm64 for the UTM VMs, amd64 for the Proxmox VM. Record the schematic IDs and download the ISOs.
+Visit https://factory.talos.dev and download the ISOs for your platform, adding system extensions as needed.
 
-**Create the VMs.** Give each VM at least 2 vCPU, 2 GB RAM, and 10 GB disk, with headroom for workloads. Attach the matching ISO, use **bridged** networking, and boot from the CD. In Proxmox, upload the ISO first under Datacenter, Storage, ISO Images.
+Create the VMs by attaching the matching ISO. If you are using UTM, enable **Apple Virtualization** instead of QEMU to prevent etcd corruption on power loss and use **bridged** networking to give the VMs their own IP.
 
-**First boot.** Each node enters maintenance mode, displaying a DHCP address. Those IPs become `<node-1/2/3>` in step 3.
+On first boot, each node enters maintenance mode, displaying a DHCP address. Those IPs become `<node-1/2/3>` in step 3.
 
 ## 1. Clone
 
@@ -45,7 +45,7 @@ talosctl gen secrets -o _talos/secrets.yaml \
 
 `apply-config --insecure` pushes the machine config to a fresh node and sets its hostname from the `--config-patch` file. Run `bootstrap` exactly once on the first node to initialize etcd. The remaining nodes join the existing member set. The rest of the commands import the generated config and point `talosctl` at the new nodes.
 
-Replace `<node-1/2/3>` with `.189`, `.190`, and `.192`. For extra nodes, add a `talos/nodes/cp-0N.yaml` hostname file and append the matching line.
+Replace `<node-1/2/3>` with the IPs for your nodes. For extra nodes, add a `talos/nodes/cp-0N.yaml` hostname file and append the matching line.
 
 ```bash
 talosctl apply-config --insecure -n <node-1> \
@@ -70,8 +70,6 @@ kubectl get nodes -A -o wide
 Expect three `Ready` control-plane nodes. The `.8` VIP can take 30 to 60 seconds to appear while Talos elects a holder.
 
 ## 4. Install Argo CD
-
-Install the upstream manifests with server-side apply, which is required because the CRD set is large:
 
 ```bash
 kubectl create namespace argocd
