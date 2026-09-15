@@ -4,6 +4,11 @@
 # Uses deviceSelector (not interface: eth0) to mimic kube-vip autodetect:
 # all nodes have different NIC names, so we select the single physical NIC.
 # If a node has multiple physical NICs, see talos/node-overrides/README.md.
+# allowSchedulingOnControlPlanes: 3-node homelab has no workers (k3s scheduled
+# on servers by default). Without this, Traefik/minecraft/v2ray Deployments
+# stay Pending on tainted control-planes.
+cluster:
+  allowSchedulingOnControlPlanes: true
 machine:
   network:
     interfaces:
