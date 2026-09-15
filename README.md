@@ -14,6 +14,18 @@ kubectl apply -f argocd/root-app.yaml   # Root App syncs everything else within 
 
 Open the Argo CD UI at `https://10.3.3.9`.
 
+## Status
+
+Live service health is published on the [status page](https://status.seung.dev/) (Kener), which probes each public endpoint independently of this cluster and keeps 90 days of uptime history per monitor.
+
+<p align="center">
+  <a href="https://status.seung.dev/">
+    <img src="docs/assets/status-page.png" alt="Status page showing 90-day uptime for dsns.dev, mc.dsns.dev, immich.dsns.dev, and vray.dsns.dev" width="800">
+  </a>
+</p>
+
+<p align="center"><em>Captured September 2026. Open the <a href="https://status.seung.dev/">live status page</a> for current data.</em></p>
+
 ## How It Works
 
 - **Cluster:** three Talos nodes form a single HA cluster. Every node is a control-plane member and is schedulable, so the cluster has no dedicated workers. The failure of any single node does not take the cluster down.

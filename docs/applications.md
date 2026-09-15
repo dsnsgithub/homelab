@@ -18,6 +18,14 @@ This page lists what runs on the cluster today and what is planned. A replica co
 - **Web Proxy** (`apps/web-proxy/`) holds the namespace, the wildcard `Certificate` objects, the `IngressRoute` objects (Traefik hostname-routing rules), and the headless Services with EndpointSlices for LAN backends (`.218` general proxy, `.195` coding host, `.172` photo host). See [Networking](networking.md#dns-and-tls).
 - **Planned work:** Immich and T3 Code already have routes and slices, and only their LAN backends are pending. WireGuard has no manifests yet.
 
+## Service Status
+
+Public uptime is tracked on the [status page](https://status.seung.dev/) (Kener), which probes each endpoint from outside the cluster and keeps 90 days of history per monitor.
+
+![Status page showing 90-day uptime for dsns.dev, mc.dsns.dev, immich.dsns.dev, and vray.dsns.dev](assets/status-page.png)
+
+The current monitors map to the apps above: `dsns.dev`, `mc.dsns.dev (proxy)`, `immich.dsns.dev`, and `vray.dsns.dev`. The screenshot was captured in September 2026, so open the live page for current data. In-cluster metrics and alerting remain on the roadmap (see [Operations](operations.md#roadmap)).
+
 ## Adding an App
 
 1. Add manifests under `apps/<name>/` (Deployment, Service, and sealed secrets as needed).
