@@ -8,15 +8,6 @@ Install the following tools on the workstation first. `talosctl` must match Talo
 
 The cluster requires at least 3 Talos nodes. Three is the etcd quorum minimum, and every node is a schedulable control-plane member. This repository was built with 3 VMs (2 in UTM, 1 in Proxmox), all booted from the Talos ISO and bridged onto `10.3.3.0/24`. Any platform works as long as the nodes share L2 adjacency, which ARP-based VIP failover requires. Reserve one address per node (here `.189`, `.190`, and `.192`) through DHCP reservations or an equivalent mechanism, and keep the `.8`, `.9` (LB), and `.10` VIPs free and outside the DHCP pool. A Cloudflare API token scoped to DNS-Edit is required for the DNS-01 challenges, and `dsns.dev`, `seung.dev`, and `mseung.dev` must be delegated to Cloudflare.
 
-## 1. Clone
-
-```bash
-git clone https://github.com/dsnsgithub/homelab/
-cd homelab
-```
-
-If you are rebuilding onto an existing healthy cluster, skip to [step 4](#4-install-argo-cd).
-
 ## 0. Download Talos and Boot the VMs
 
 Talos ships as a bootable ISO per release and per CPU architecture. The ISO version must match `talosctl` (`v1.14.0` in this repo). Two sources provide it.
@@ -28,6 +19,15 @@ Talos ships as a bootable ISO per release and per CPU architecture. The ISO vers
 **Create the VMs.** Give each VM at least the Talos minimums (2 vCPU, 2 GB RAM, 10 GB disk), with headroom above that because these control-plane nodes also run workloads. Every VM must use bridged networking so each node receives its own LAN address. In UTM, create a new VM, attach the arm64 ISO as a CD drive, set the network interface to bridged mode, and boot from the CD. In Proxmox, upload the amd64 ISO under Datacenter, Storage, ISO Images, then create a VM with the ISO attached and its NIC on the LAN bridge in bridge mode, and boot from the CD.
 
 **First boot.** Each node boots into maintenance mode, requests an address over DHCP, and prints its acquired addresses on the console. Record the three addresses. They become `<node-1/2/3>` in step 3, and they should match the `.189`, `.190`, and `.192` reservations.
+
+## 1. Clone
+
+```bash
+git clone https://github.com/dsnsgithub/homelab/
+cd homelab
+```
+
+If you are rebuilding onto an existing healthy cluster, skip to [step 4](#4-install-argo-cd).
 
 ## 2. Generate Talos Config
 
