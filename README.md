@@ -2,13 +2,14 @@
 
 This repository builds and operates my Kubernetes cluster. Three Talos nodes form a single HA cluster, and Argo CD installs and synchronizes everything above the OS. For more detailed information, you can check out [Architecture](docs/architecture.md) and [Bootstrap](docs/bootstrap.md) to build it.
 
+<<<<<<< HEAD
 ## Architecture
 
 <p align="center">
   <img width="800" alt="Homelab architecture diagram mapping physical hosts to Talos virtual machines to the shared Kubernetes control plane, with Talos and kube-vip virtual IPs facing the public internet" src="https://github.com/user-attachments/assets/753e09ed-d8ef-4cce-a2bc-2b3f5bdeec63" />
 </p>
 
-The diagram maps physical hosts to Talos virtual machines to the shared Kubernetes control plane, with the Talos and kube-vip virtual IPs facing the public internet. See [Architecture](docs/architecture.md) for the full breakdown.
+The diagram maps physical hosts to Talos virtual machines to the shared Kubernetes control plane, with the Talos and kube-vip virtual IPs facing the public internet. The architecture will continue to evolve as more applications migrate. See [Architecture](docs/architecture.md) for the full breakdown.
 
 ## Quickstart
 
