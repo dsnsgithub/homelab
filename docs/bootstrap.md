@@ -6,7 +6,7 @@ This page documents the one-time bring-up procedure: provisioning bare Talos ISO
 
 Install the following tools on the workstation first. `talosctl` must match Talos `v1.14.0` and manages the node OS. `kubectl` must match Kubernetes `v1.37.0` and manages workloads. `kubeseal` encrypts secrets for storage in Git. `git` checks out and updates this repository.
 
-The environment requires 3 VMs (2 in UTM, 1 in Proxmox) booted from the Talos ISO and bridged onto `10.3.3.0/24`. Reserve `.189`, `.190`, and `.192` for the nodes through DHCP reservations or an equivalent mechanism, and keep the `.8`, `.9` (LB), and `.10` VIPs free and outside the DHCP pool. A Cloudflare API token scoped to DNS-Edit is required for the DNS-01 challenges, and `dsns.dev`, `seung.dev`, and `mseung.dev` must be delegated to Cloudflare.
+The cluster requires at least 3 Talos nodes. Three is the etcd quorum minimum, and every node is a schedulable control-plane member. This repository was built with 3 VMs (2 in UTM, 1 in Proxmox), all booted from the Talos ISO and bridged onto `10.3.3.0/24`. Any platform works as long as the nodes share L2 adjacency, which ARP-based VIP failover requires. Reserve one address per node (here `.189`, `.190`, and `.192`) through DHCP reservations or an equivalent mechanism, and keep the `.8`, `.9` (LB), and `.10` VIPs free and outside the DHCP pool. A Cloudflare API token scoped to DNS-Edit is required for the DNS-01 challenges, and `dsns.dev`, `seung.dev`, and `mseung.dev` must be delegated to Cloudflare.
 
 ## 1. Clone
 
