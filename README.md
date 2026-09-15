@@ -56,6 +56,11 @@ talosctl kubeconfig -n 10.3.3.8
 talosctl patch mc -n <node-1> --patch @talos/nodes/cp-01.yaml
 talosctl patch mc -n <node-2> --patch @talos/nodes/cp-02.yaml
 talosctl patch mc -n <node-3> --patch @talos/nodes/cp-03.yaml
+
+kubectl get nodes -A -o wide
+# delete all of the randomly generated ones
+# for instance: kubectl delete node talos-6c6-3jr talos-8vj-2ty talos-apa-9r2
+kubectl get nodes -A -o wide
 ```
 
 4. Install ArgoCD
