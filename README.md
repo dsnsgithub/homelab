@@ -41,7 +41,7 @@ talosctl gen secrets -o _talos/secrets.yaml --from-controlplane-config _talos/co
 
 3. Talos Configuration (skip if not using Talos)
 
-Replace `<node-1>`, `<node-2>`, and `<node-3>` with the IPs of each node. Feel free to add more than three nodes just by appending more. Hostnames are set at install time via the per-node patches in `talos/nodes/` (e.g. `cp-01.yaml` -> `talos-m2`).
+Replace `<node-1>`, `<node-2>`, and `<node-3>` with the IPs of each node. Feel free to add more than three nodes just by appending more.
 
 ```bash
 talosctl apply-config --insecure -n <node-1> --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-01.yaml
