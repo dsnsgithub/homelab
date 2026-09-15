@@ -1,7 +1,5 @@
 # Bootstrap
 
-## Prerequisites
-
 Install the following tools on your own computer first.
 
 | Tool | Version | Purpose |
