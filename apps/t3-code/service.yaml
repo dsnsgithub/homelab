@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: t3-code
+  namespace: t3-code
+spec:
+  type: ClusterIP
+  selector:
+    app: t3-code
+  ports:
+  - name: http
+    port: 7799
+    targetPort: 7799

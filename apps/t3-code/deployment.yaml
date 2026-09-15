@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: t3-code
+  namespace: t3-code
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: t3-code
+  template:
+    metadata:
+      labels:
+        app: t3-code
+    spec:
+      containers:
+      - name: t3
+        image: seungd/t3-code:latest
+        imagePullPolicy: Always
+        env:
+        - name: IS_SANDBOX
+          value: "1"
+        ports:
+        - containerPort: 7799
+          name: http
+        volumeMounts:
+        - name: t3-data
+          mountPath: /data
+        - name: t3-repos
+          mountPath: /root/repositories
+        stdin: true
+        tty: true
+      volumes:
+      - name: t3-data
+        persistentVolumeClaim:
+          claimName: t3-data
+      - name: t3-repos
+        persistentVolumeClaim:
+          claimName: t3-repos

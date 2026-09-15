@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: t3-code
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/dsnsgithub/homelab.git
+    targetRevision: main
+    path: apps/t3-code
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: t3-code
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
