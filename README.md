@@ -1,10 +1,10 @@
 # DSNS's Homelab: HA Talos Kubernetes with GitOps
 
-This repository builds and runs my home Kubernetes cluster: 3 Talos nodes acting as one HA cluster, with everything above the OS installed and kept in sync by Argo CD. If you know what Kubernetes is but have never bootstrapped a cluster, start with [Architecture](docs/architecture.md), then follow [Bootstrap](docs/bootstrap.md) when ready to build.
+This repository builds and operates a home Kubernetes cluster. Three Talos nodes form a single HA cluster, and Argo CD installs and synchronizes everything above the OS. Readers who understand Kubernetes concepts but have not bootstrapped a cluster should start with [Architecture](docs/architecture.md), then follow [Bootstrap](docs/bootstrap.md) to build it.
 
 ## How It Works
 
-- **Cluster:** three Talos nodes act as one cluster. Every node is a control-plane member and schedulable (no dedicated workers). Any single node can fail without taking the cluster down.
+- **Cluster:** three Talos nodes form a single HA cluster. Every node is a control-plane member and is schedulable, so the cluster has no dedicated workers. The failure of any single node does not take the cluster down.
 - **Talos Linux** is the OS on each node. It is minimal and immutable, provides no SSH access, and is managed remotely with `talosctl`.
 - **Argo CD** is the GitOps autopilot. It watches `argocd/apps/` on `main` and converges the cluster to whatever is committed (auto-sync with prune and selfHeal, with a poll interval around 3 minutes).
 - **Traefik** is the ingress controller. It terminates TLS, redirects HTTP to HTTPS, and routes each hostname to the correct Service, including Services that point at other machines on the LAN.

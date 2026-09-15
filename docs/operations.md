@@ -9,7 +9,7 @@ Normal changes follow this loop, and no manual install commands are needed:
 3. Argo CD auto-syncs within about 3 minutes. Prune removes deleted objects, and selfHeal reverts manual `kubectl` edits.
 4. Verify with `argocd app list` or in the UI at `https://10.3.3.9`.
 
-`argocd/root-app.yaml` is the only object applied by hand after bootstrap. Everything else is a child Application of the root.
+`argocd/root-app.yaml` is the only object applied manually after bootstrap. Everything else is a child Application of the root.
 
 ## Regenerate Talos Config
 

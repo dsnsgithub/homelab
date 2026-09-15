@@ -5,7 +5,7 @@ This is a 3-node HA Talos cluster where every node is a control-plane member and
 - **OS:** Talos Linux is minimal and immutable and provides no SSH access. All management goes through the `talosctl` API, for example `talosctl -n <node-ip> get addresses`.
 - **API HA:** the Talos built-in VIP `10.3.3.8` fronts `kube-apiserver:6443`, so `kubectl` keeps working through any single-node failure.
 - **Service LB:** the kube-vip DaemonSet (one pod per node) runs in service mode (`svc_enable=true`, `cp_enable=false`). It assigns the `.9` and `.10` LoadBalancer IPs and announces them over ARP, then re-announces them with gratuitous ARP on leader change. See [Networking](networking.md).
-- **GitOps:** the Argo CD Root App watches `argocd/apps/` on `main` and auto-syncs with prune and selfHeal on a poll interval around 3 minutes. Deleted files therefore delete cluster objects, and hand-edited objects get reverted. See [Operations](operations.md).
+- **GitOps:** the Argo CD Root App watches `argocd/apps/` on `main` and auto-syncs with prune and selfHeal on a poll interval around 3 minutes. Deleted files therefore delete cluster objects, and manually edited objects are reverted. See [Operations](operations.md).
 - **Edge:** Traefik runs 2 replicas. It terminates TLS, redirects `web` to `websecure`, and routes to in-cluster Services plus external LAN backends through headless Services and manually managed EndpointSlices (static Service to IP mappings for machines outside the cluster).
 - **Secrets:** Bitnami Sealed Secrets encrypts secret values with the cluster key before they are committed. Only `*.sealed.yaml` files are committed, and each matching `*.TEMPLATE.yaml` file shows the expected fields with placeholder values.
 

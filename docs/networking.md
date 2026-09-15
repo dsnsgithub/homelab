@@ -12,7 +12,7 @@ The cluster lives on subnet `10.3.3.0/24`. Nodes receive their addresses through
 
 The repository defines each address as follows. `10.3.3.8` is set in `talos/controlplane-patch.yaml` (`machine.network.interfaces[].vip.ip`), and kube-vip is explicitly told to ignore control-plane VIPs (`cp_enable=false`). `10.3.3.9` is the `argocd-server-lb` Service (`type: LoadBalancer`, `loadBalancerIP: 10.3.3.9`) in `infra/argocd-server-lb/`. `10.3.3.10` is pinned by Traefik (`infra/traefik/values.yaml`, `loadBalancerIP`) and shared with the Minecraft proxy Service. Traefik runs 2 replicas with an HTTP to HTTPS redirect (`web` to `websecure`).
 
-kube-vip (`ghcr.io/kube-vip/kube-vip:v1.0.4`) runs as a hostNetwork DaemonSet in `kube-system`. Nodes elect a leader on short terms (5s lease, 3s renew, 1s retry), the leader announces the Service IPs over ARP, and a newly elected leader reclaims them with gratuitous ARP after a failure. You can exercise failover by deleting the leader pod with `kubectl delete pod -n kube-system -l app.kubernetes.io/name=kube-vip-ds` and watching the VIP migrate.
+kube-vip (`ghcr.io/kube-vip/kube-vip:v1.0.4`) runs as a hostNetwork DaemonSet in `kube-system`. Nodes elect a leader on short terms (5s lease, 3s renew, 1s retry), the leader announces the Service IPs over ARP, and a newly elected leader reclaims them with gratuitous ARP after a failure. Failover can be exercised by deleting the leader pod with `kubectl delete pod -n kube-system -l app.kubernetes.io/name=kube-vip-ds`, after which the VIP migrates to the newly elected leader.
 
 ## DNS and TLS
 
@@ -36,4 +36,4 @@ IngressRoutes are defined in `apps/web-proxy/ingressroutes.yaml` and all serve t
 | `immich.dsns.dev` | `immich:2283` (LAN `10.3.3.172`) |
 | `vray.dsns.dev` | `vray:10086`, forwarded to `v2ray-service.v2ray-vpn` (in-cluster) |
 
-LAN backends outside the cluster are wired as ClusterIP Services with hand-managed EndpointSlices (static IP endpoints, for example `10.3.3.218`). If a backend moves, update `apps/web-proxy/services.yaml`. The IngressRoutes do not need to change.
+LAN backends outside the cluster are wired as ClusterIP Services with manually managed EndpointSlices (static IP endpoints, for example `10.3.3.218`). If a backend moves, update `apps/web-proxy/services.yaml`. The IngressRoutes do not need to change.

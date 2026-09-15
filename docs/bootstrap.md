@@ -1,12 +1,12 @@
 # Bootstrap
 
-This page covers the one-time bring-up, from bare Talos ISOs to an HA cluster to Argo CD managing everything. It assumes you have used `kubectl` but never installed a cluster. Each step explains what it does and why.
+This page documents the one-time bring-up procedure: provisioning bare Talos ISOs, forming the HA cluster, and handing management to Argo CD. It assumes familiarity with `kubectl` but no prior cluster installation experience. Each step states its purpose before giving the commands.
 
 ## Prerequisites
 
-Install these tools on your own computer first. `talosctl` must match Talos `v1.14.0` and manages the node OS. `kubectl` must match Kubernetes `v1.37.0` and manages workloads. `kubeseal` encrypts secrets for storage in Git. `git` checks out and updates this repository.
+Install the following tools on the workstation first. `talosctl` must match Talos `v1.14.0` and manages the node OS. `kubectl` must match Kubernetes `v1.37.0` and manages workloads. `kubeseal` encrypts secrets for storage in Git. `git` checks out and updates this repository.
 
-Prepare the following environment. You need 3 VMs (2 in UTM, 1 in Proxmox) booted from the Talos ISO and bridged onto `10.3.3.0/24`. Reserve `.189`, `.190`, and `.192` for the nodes through DHCP reservations or equivalent, and keep the `.8`, `.9` (LB), and `.10` VIPs free and outside the DHCP pool. You also need a Cloudflare API token scoped to DNS-Edit for the DNS-01 challenges, with `dsns.dev`, `seung.dev`, and `mseung.dev` delegated to Cloudflare.
+The environment requires 3 VMs (2 in UTM, 1 in Proxmox) booted from the Talos ISO and bridged onto `10.3.3.0/24`. Reserve `.189`, `.190`, and `.192` for the nodes through DHCP reservations or an equivalent mechanism, and keep the `.8`, `.9` (LB), and `.10` VIPs free and outside the DHCP pool. A Cloudflare API token scoped to DNS-Edit is required for the DNS-01 challenges, and `dsns.dev`, `seung.dev`, and `mseung.dev` must be delegated to Cloudflare.
 
 ## 1. Clone
 
@@ -69,7 +69,7 @@ kubectl apply -n argocd --server-side --force-conflicts \
   -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
 
-If you are rebuilding on k3s instead of Talos, disable its bundled ServiceLB and Traefik first, because kube-vip and this repo's Traefik own `.9` and `.10`.
+If you are rebuilding on k3s instead of Talos, disable its bundled ServiceLB and Traefik first, because `.9` and `.10` are assigned to kube-vip and this repository's Traefik.
 
 ## 5. Install Sealed Secrets
 
@@ -92,7 +92,7 @@ The currently sealed inputs are the Cloudflare token (`infra/cert-manager/cloudf
 
 ## 6. Deploy the Root App
 
-This is the last command you run by hand during setup. It points Argo CD at `argocd/apps` on `main`, and Argo CD installs the rest by itself within about 3 minutes.
+This is the last manually executed command of the setup procedure. It points Argo CD at `argocd/apps` on `main`, and Argo CD installs the rest by itself within about 3 minutes.
 
 ```bash
 kubectl apply -f argocd/root-app.yaml

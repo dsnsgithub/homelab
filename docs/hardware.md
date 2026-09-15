@@ -8,7 +8,7 @@
 
 Notes:
 
-- **Bridged networking** is configured on all three VMs, so each node gets its own LAN address on `10.3.3.0/24`. Bridging is required because ARP-based VIP failover only works when all nodes share L2 adjacency. NAT or host-only networking breaks it.
+- **Bridged networking** is configured on all three VMs, so each node receives its own LAN address on `10.3.3.0/24`. Bridging is required because ARP-based VIP failover only works when all nodes share L2 adjacency. NAT or host-only networking breaks it.
 - **Mixed arch** (arm64 and amd64) means every image must ship a multi-arch manifest. The current images (`itzg/mc-proxy`, `v2fly/v2fly-core`, `busybox`, Traefik, cert-manager, kube-vip) all qualify, so watch for `exec format` pod errors when adding new ones.
 - `talos-m2` keeps its VM on the attached 2 TB SSD. The host internal disk is the stock 256 GB drive.
 - `talos-raider` is borrowed from another Proxmox cluster. etcd tolerates the loss of one member, so reclaiming Raider without a replacement would remove all quorum redundancy. Add a successor first (see [Operations](operations.md#add-a-node)).
