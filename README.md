@@ -2,7 +2,6 @@
 
 This repository builds and operates my Kubernetes cluster. Three Talos nodes form a single HA cluster, and Argo CD installs and synchronizes everything above the OS. For more detailed information, you can check out [Architecture](docs/architecture.md) and [Bootstrap](docs/bootstrap.md) to build it.
 
-<<<<<<< HEAD
 ## Architecture
 
 <p align="center">
