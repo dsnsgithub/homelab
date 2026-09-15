@@ -1,37 +1,49 @@
 # Bootstrap
 
+First-time setup: turning three empty virtual machines into a working cluster. Do it once, in order — afterwards you never repeat it, you just push changes to Git and the autopilot applies them. Allow roughly half an hour, most of it waiting.
+
 ## Prerequisites
 
-- `talosctl` (match Talos `v1.14.0`), `kubectl` (match K8s `v1.37.0`), `kubeseal`, `git`.
-- 3 VMs (UTM × 2, Proxmox × 1) booted from Talos ISO, same L2 as `10.3.3.0/24`, bridged networking.
-- LAN DHCP (or reservations) for `.189` / `.190` / `.192`; VIPs `.8`, `.9` (LB), `.10` free and outside the DHCP pool.
-- Cloudflare API token (DNS-Edit) for cert-manager DNS-01.
-- Domains delegated to Cloudflare: `dsns.dev`, `seung.dev`, `mseung.dev`.
+Tools to install on your own computer first:
 
-## 1. Clone
+- `talosctl` — remote control for the Talos operating system (match version `v1.14.0`).
+- `kubectl` — remote control for the apps running on the cluster (match version `v1.37.0`).
+- `kubeseal` — locks passwords so they can be stored in Git.
+- `git` — downloads and uploads this repository.
+
+The environment you need:
+
+- 3 virtual machines (2 in UTM, 1 in Proxmox) started from the Talos installer image, all on the home network with bridged networking.
+- Router addresses `.189` / `.190` / `.192` available for the machines; shared addresses `.8`, `.9`, `.10` free and kept out of the router's automatic-assignment pool.
+- A Cloudflare login (token) allowed to edit DNS — used once to prove domain ownership for certificates.
+- Domain names pointing at Cloudflare: `dsns.dev`, `seung.dev`, `mseung.dev`.
+
+## 1. Download This Repo
 
 ```bash
 git clone https://github.com/dsnsgithub/homelab/
 cd homelab
 ```
 
-If a working cluster exists, skip to [step 4](#4-install-argo-cd).
+If a working cluster already exists, skip ahead to [step 4](#4-install-the-autopilot).
 
-## 2. Generate Talos Config
+## 2. Create the Machines' ID Cards
+
+This generates the configuration files (ID cards, keys, addresses) the machines will use. They land in a local `_talos/` folder that is never committed to Git — back it up somewhere safe, because you need it for upgrades and new machines.
 
 ```bash
 talosctl gen config homelab https://10.3.3.8:6443 \
   --config-patch @talos/controlplane-patch.yaml \
   --output-dir _talos
 
-# Persist for upgrades / new nodes — do not commit
+# Save the master keys for later — do not commit this file
 talosctl gen secrets -o _talos/secrets.yaml \
   --from-controlplane-config _talos/controlplane.yaml
 ```
 
-## 3. Apply Config & Bootstrap etcd
+## 3. Hand Out ID Cards & Start the Cluster
 
-Replace `<node-1/2/3>` with `.189`, `.190`, `.192`. Add nodes by appending lines with a matching `talos/nodes/cp-0N.yaml` hostname patch.
+Replace `<node-1/2/3>` with `.189`, `.190`, `.192`. (Adding a fourth machine later works the same way: copy one of the `talos/nodes/cp-0N.yaml` name files and add its line.)
 
 ```bash
 talosctl apply-config --insecure -n <node-1> \
@@ -45,17 +57,19 @@ talosctl config merge _talos/talosconfig
 talosctl config endpoint <node-1> <node-2> <node-3>
 talosctl config node <node-1> <node-2> <node-3>
 
-# Bootstrap etcd exactly once, on the first node
+# Start the shared decision-making exactly once, on the first machine
 talosctl bootstrap -n <node-1>
 
-# Kubeconfig via the HA VIP
+# Log in through the shared address (works even if one machine is down)
 talosctl kubeconfig -n 10.3.3.8
 kubectl get nodes -A -o wide
 ```
 
-Expect 3x `Ready` control-plane nodes. The API VIP `.8` can take ~30–60s.
+Success looks like 3 machines all saying `Ready`. The shared `.8` address can take 30–60 seconds to appear — that is normal.
 
-## 4. Install Argo CD
+## 4. Install the Autopilot
+
+This installs Argo CD, the program that watches this repo and installs everything else:
 
 ```bash
 kubectl create namespace argocd
@@ -63,15 +77,17 @@ kubectl apply -n argocd --server-side --force-conflicts \
   -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
 
-> On k3s or similar, disable bundled ServiceLB/Traefik first — kube-vip + this repo's Traefik own `.9`/`.10`.
+> Only relevant if rebuilding on k3s instead of Talos: turn off its built-in address-helper and front door first — this repo brings its own (kube-vip + Traefik on `.9`/`.10`).
 
-## 5. Install Sealed Secrets
+## 5. Install the Password Locker
+
+This installs the Sealed Secrets program, which unlocks the encrypted passwords stored in Git:
 
 ```bash
 kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/latest/download/controller.yaml
 ```
 
-For every `*.TEMPLATE.yaml`, create the plain Secret locally, seal against the cluster, commit only sealed output:
+For every blank `*.TEMPLATE.yaml` form, fill in the real values on your computer, lock them with `kubeseal`, and commit only the locked result:
 
 ```bash
 kubectl create secret generic velocity-config -n minecraft \
@@ -80,12 +96,14 @@ kubectl create secret generic velocity-config -n minecraft \
   --dry-run=client -o yaml | kubeseal -o yaml > apps/minecraft/velocity-secret.sealed.yaml
 ```
 
-Current sealed inputs: `infra/cert-manager/cloudflare-secret`, `apps/minecraft/velocity-secret`, `apps/v2ray/v2ray-config`.
+Currently locked passwords: the Cloudflare login (`infra/cert-manager/`), the Minecraft config (`apps/minecraft/`), and the VPN config (`apps/v2ray/`).
 
-## 6. Deploy the Root App
+## 6. Hand the Autopilot Its Map
+
+The last command you ever run by hand for setup — it points Argo CD at this repo, and Argo CD installs the rest by itself (about 3 minutes):
 
 ```bash
 kubectl apply -f argocd/root-app.yaml
 ```
 
-Argo CD syncs everything under `argocd/apps` (prune + selfHeal, ~3 min poll). UI at `https://10.3.3.9`.
+Watch progress in the Argo CD website at `https://10.3.3.9`.
