@@ -39,8 +39,7 @@ talosctl gen config homelab https://10.3.3.8:6443 --config-patch @talos/controlp
 talosctl gen secrets -o _talos/secrets.yaml --from-controlplane-config _talos/controlplane.yaml
 ```
 
-3. Talos Configuration (skip if not using Talos)
-
+3. Talos Configuration
 Replace `<node-1>`, `<node-2>`, and `<node-3>` with the IPs of each node. Feel free to add more than three nodes just by appending more.
 
 ```bash
