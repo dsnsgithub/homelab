@@ -1,5 +1,9 @@
 # Architecture
 
+<p align="center">
+  <img width="800" alt="Homelab architecture diagram mapping physical hosts to Talos virtual machines to the shared Kubernetes control plane, with Talos and kube-vip virtual IPs facing the public internet" src="https://github.com/user-attachments/assets/753e09ed-d8ef-4cce-a2bc-2b3f5bdeec63" />
+</p>
+
 This is a 3-node HA Talos cluster where every node is a control-plane member and schedulable, so there are no dedicated workers. The `control-plane` taint is removed in `talos/controlplane-patch.yaml` so pods schedule on all three nodes. Three members is the minimum for etcd quorum. etcd is the cluster's consistent datastore and it needs a majority (2 of 3) to accept writes, so any single node can fail without losing the cluster.
 
 - **OS:** Talos Linux is minimal and immutable and provides no SSH access. All management goes through the `talosctl` API, for example `talosctl -n <node-ip> get addresses`.
