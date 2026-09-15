@@ -29,7 +29,7 @@ talos-m4       Ready    control-plane   143m   v1.37.0   10.3.3.190    <none>   
 talos-raider   Ready    control-plane   143m   v1.37.0   10.3.3.192    <none>        Talos (v1.14.0)   6.18.48-talos (amd64)   containerd://2.3.4
 ```
 
-All three nodes report `Ready`, which means they have joined the cluster and accept work.
+All three nodes report `Ready`.
 
 > `talos-m4` reports `amd64` above but should be `arm64` (Apple Silicon UTM guest). Verify with `kubectl get node talos-m4 -o jsonpath='{.status.nodeInfo.architecture}'`.
 

@@ -57,7 +57,7 @@ talosctl kubeconfig -n 10.3.3.8
 kubectl get nodes -A -o wide
 ```
 
-Expect three `Ready` control-plane nodes. The `.8` VIP can take 30 to 60 seconds to appear while Talos elects a holder, which is normal.
+Expect three `Ready` control-plane nodes. The `.8` VIP can take 30 to 60 seconds to appear while Talos elects a holder.
 
 ## 4. Install Argo CD
 
