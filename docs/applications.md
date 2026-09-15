@@ -4,7 +4,7 @@ This page lists what runs on the cluster today and what is planned. A replica co
 
 | App | Namespace | Status | Entry |
 |-----|-----------|--------|-------|
-| Minecraft Velocity and Limbo (`mc.dsns.dev`) | `minecraft` | Live (2 replicas, `itzg/mc-proxy:java25`, MC `26.2`, Velocity and Limbo handler and Simple Voice Chat) | `10.3.3.10:25577` TCP and UDP |
+| Minecraft Velocity and Limbo (`mc.dsns.dev`) | `minecraft` | Live (2 replicas, `itzg/mc-proxy:java25`, MC `26.2`, Velocity and Limbo handler and Simple Voice Chat) | `10.3.3.10:25565` TCP (gameplay), `:25577` UDP (voice) |
 | Web Proxy (Traefik IngressRoutes) | `web-proxy` | Live | `10.3.3.10:443` |
 | V2Ray VPN | `v2ray-vpn` | Live (2 replicas, `v2fly/v2fly-core`) | `vray.dsns.dev:10086` |
 | Immich | Not deployed | Planned (IngressRoute and EndpointSlice stub exists, LAN backend `.172` pending) | `immich.dsns.dev` |
@@ -13,7 +13,7 @@ This page lists what runs on the cluster today and what is planned. A replica co
 
 ## Details
 
-- **Minecraft** (`apps/minecraft/`) has two parts. Velocity greets connecting players, and Limbo is a lightweight placeholder server where players wait. An init container copies `velocity.toml` and `forwarding.secret` (from the sealed `velocity-config` Secret) into place. The proxy is exposed on the shared `.10` VIP over TCP and UDP port `25577`. UDP carries Simple Voice Chat proximity audio.
+- **Minecraft** (`apps/minecraft/`) has two parts. Velocity greets connecting players, and Limbo is a lightweight placeholder server where players wait. An init container copies `velocity.toml` and `forwarding.secret` (from the sealed `velocity-config` Secret) into place. The proxy is exposed on the shared `.10` VIP. TCP port `25565` serves gameplay (forwarded to `25577` in the container), and UDP port `25577` carries Simple Voice Chat proximity audio.
 - **V2Ray** (`apps/v2ray/`) runs `v2fly/v2fly-core` as a 2-replica Deployment. It mounts `config.json` from the sealed `v2ray-config` Secret and is exposed through Traefik at `vray.dsns.dev` on port 10086 (the `vray` ExternalName Service points at `v2ray-service.v2ray-vpn`).
 - **Web Proxy** (`apps/web-proxy/`) holds the namespace, the wildcard `Certificate` objects, the `IngressRoute` objects (Traefik hostname-routing rules), and the headless Services with EndpointSlices for LAN backends (`.218` general proxy, `.195` coding host, `.172` photo host). See [Networking](networking.md#dns-and-tls).
 - **Planned work:** Immich and T3 Code already have routes and slices, and only their LAN backends are pending. WireGuard has no manifests yet.

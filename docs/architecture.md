@@ -46,7 +46,7 @@ All three nodes report `Ready`.
 | Ingress | Traefik | Helm via Argo CD, `values.yaml` pins `.10` | 2 replicas |
 | TLS | cert-manager and Let's Encrypt prod | DNS-01 via Cloudflare | Wildcard certs, auto-renew |
 | Secrets | Bitnami Sealed Secrets | `controller.yaml` (latest) and `kubeseal` CLI | Encrypted in Git |
-| Game | Velocity proxy (`itzg/mc-proxy:java25`) and Limbo | MC `26.2` | 2 replicas, TCP and UDP 25577 |
+| Game | Velocity proxy (`itzg/mc-proxy:java25`) and Limbo | MC `26.2` | 2 replicas, TCP 25565 and UDP 25577 |
 | VPN | V2Ray (`v2fly/v2fly-core`) | 2 replicas | `vray.dsns.dev:10086` |
 | Proxy | Traefik IngressRoutes | Defined in-repo | Hostname to Service routing, including LAN backends |
 
