@@ -75,7 +75,7 @@ Rows marked "Defined in-repo" have no upstream version because they are configur
 ├── talos/
 │   ├── controlplane-patch.yaml  # VIP .8, schedulable control-plane, unattended install
 │   └── nodes/                   # Per-node hostname patches (cp-01..03)
-└── docs/                      # This documentation
+└── docs/                      # Guides and icon assets
 ```
 
 Two rules apply across the whole repo. **Passwords:** only `*.sealed.yaml` files are committed, because only the cluster can decrypt them. Each `*.TEMPLATE.yaml` file documents the expected fields with placeholder values and never holds real values. **Local credentials:** the `_talos/` folder holds generated machine configs, `secrets.yaml`, `talosconfig`, and `kubeconfig`. It is git-ignored and must never be committed, because it contains cluster credentials.

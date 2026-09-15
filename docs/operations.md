@@ -46,7 +46,7 @@ talosctl upgrade -n <each-node> --image ghcr.io/siderolabs/installer:vX.Y.Z
 
 ## Secrets Rotation
 
-Fetch the controller current public certificate with `kubeseal --fetch-cert`, re-seal the secret, and push through Git like any other change. The Cloudflare token lives at `infra/cert-manager/cloudflare-secret.sealed.yaml`. If the controller certificate is ever replaced, re-seal every sealed file, because the old files will stop decrypting.
+Fetch the controller's current public certificate with `kubeseal --fetch-cert`, re-seal the secret, and push through Git like any other change. The Cloudflare token lives at `infra/cert-manager/cloudflare-secret.sealed.yaml`. If the controller certificate is ever replaced, re-seal every sealed file, because the old files will stop decrypting.
 
 ## Backups
 

@@ -24,7 +24,7 @@ All icons are the official marks served by each project or site. The Minecraft i
 
 Public uptime is tracked on the [status page](https://status.seung.dev/) (Kener), which probes each endpoint from outside the cluster and keeps 90 days of history per monitor.
 
-The current monitors map to the apps above: `dsns.dev`, `mc.dsns.dev (proxy)`, `immich.dsns.dev`, and `vray.dsns.dev`. Open the live page for current data. In-cluster metrics and alerting remain on the roadmap (see [Operations](operations.md#roadmap)).
+The status page monitors `dsns.dev`, `mc.dsns.dev (proxy)`, `immich.dsns.dev`, and `vray.dsns.dev`. Open the live page for current data. In-cluster metrics and alerting remain on the roadmap (see [Operations](operations.md#roadmap)).
 
 ## Adding an App
 
