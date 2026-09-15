@@ -15,12 +15,12 @@ kube-vip has been configured to advertise over ARP and if the leader node goes o
 This configuration expects a minimum of three control plane nodes for quorum.
 
 Applications:
-- [x] Minecraft Proxy + Limbo Server
+- [x] Minecraft Proxy + Limbo Server (mc.dsns.dev)
 - [x] Web Proxy
-- [ ] Wireguard VPN
-- [x] V2Ray VPN
-- [ ] Immich
-- [ ] T3 Code
+  - [ ] Wireguard VPN
+  - [x] V2Ray VPN
+  - [ ] Immich
+  - [ ] T3 Code
 
 ## Deploy Homelab onto existing Kubernetes cluster
 
