@@ -30,8 +30,8 @@ talosctl gen config homelab https://10.3.3.8:6443 \
 ```bash
 talosctl apply-config --insecure -n <node-4> \
   --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-04.yaml
-talosctl config endpoint <node-4>
-talosctl config node <node-4>
+talosctl config endpoint <node-1> <node-2> <node-3> <node-4>
+talosctl config node <node-1> <node-2> <node-3> <node-4>
 ```
 
 3. Verify membership and consensus with `talosctl etcd status` and `kubectl get nodes`.
