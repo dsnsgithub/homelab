@@ -22,7 +22,7 @@ Applications:
   - [ ] T3 Code
 - [ ] Wireguard VPN
 
-## Deploy Homelab onto existing Kubernetes cluster
+## Deploy Talos Kubernetes Cluster + ArgoCD
 
 1. Clone Homelab Repository
 ```bash
@@ -30,21 +30,49 @@ git clone https://github.com/dsnsgithub/homelab/
 cd homelab
 ```
 
-2. Install ArgoCD
+2. Generate Config
+```bash
+talosctl gen config homelab https://10.3.3.8:6443 --config-patch @talos/controlplane-patch.yaml --output-dir _talos
+```
+
+3. Talos Configuration (skip if not using Talos)
+
+Replace <node-1>, <node-2>, and <node-3> with the IPs of each node. Feel free to add more than three nodes just by appending more. 
+
+```bash
+talosctl apply-config --insecure -n <node-1> --file _talos/controlplane.yaml
+talosctl apply-config --insecure -n <node-2> --file _talos/controlplane.yaml
+talosctl apply-config --insecure -n <node-3> --file _talos/controlplane.yaml
+
+export TALOSCONFIG=_talos/talosconfig
+
+talosctl config endpoint <node-1> <node-2> <node-3>
+talosctl config node <node-1> <node-2> <node-3>
+
+talosctl bootstrap -n <node-1>
+talosctl kubeconfig -n 10.3.3.8
+
+# change names for easier recognition
+talosctl patch mc -n <node-1> --patch @talos/nodes/cp-01.yaml
+talosctl patch mc -n <node-2> --patch @talos/nodes/cp-02.yaml
+talosctl patch mc -n <node-3> --patch @talos/nodes/cp-03.yaml
+```
+
+4. Install ArgoCD
 ```bash
 kubectl create namespace argocd
 kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
 Be sure to disable any preinstalled load balancers and proxies such as ServiceLB and Traefik (if using k3s or similar) before deploying this repository.
 
-3. Install Sealed Secrets controller + kubeseal
+5. Install Sealed Secrets controller + kubeseal
 ```bash
 kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/latest/download/controller.yaml
 ```
 
 Install the `kubeseal` CLI locally. Find files with `*.TEMPLATE.yaml` and generate the required secret.
 
-4. Deploy Repository
+6. Deploy Repository
 ```bash
 kubectl apply -f argocd/root-app.yaml
 ```
