@@ -1,0 +1,32 @@
+# Pre-created library volume required by the official chart:
+# immich.persistence.library.existingClaim must reference this PVC.
+# See https://github.com/immich-app/immich-charts/blob/main/README.md
+# and local/pvc.yaml in that repo.
+#
+# 500Gi starting point per requested "large library".
+# local-path provisions hostPath under /opt/local-path-provisioner on the
+# scheduled node, so this volume is tied to a single node. If you outgrow a
+# single node, migrate to NFS/Longhorn and update storageClassName + copy data.
+#
+# Migration from docker-compose UPLOAD_LOCATION:
+#   1. Let ArgoCD create this PVC (it will stay Pending until the immich-server
+#      pod schedules it via WaitForFirstConsumer).
+#   2. Find the scheduled node + host path:
+#        kubectl -n immich get pvc immich-library -o yaml
+#        kubectl get pv | grep immich-library
+#      (provisioned path looks like
+#       /opt/local-path-provisioner/pvc-<uuid>_immich_immich-library)
+#   3. Stop the old docker-compose stack, rsync $UPLOAD_LOCATION contents into
+#      that host path on the node, then start the immich ArgoCD app.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-library
+  namespace: immich
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 500Gi

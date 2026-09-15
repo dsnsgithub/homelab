@@ -1,0 +1,120 @@
+# Values for oci://ghcr.io/immich-app/immich-charts/immich (chart 0.13.2).
+# Follows https://github.com/immich-app/immich-charts/blob/main/README.md and
+# https://github.com/immich-app/immich-charts/blob/main/local/values.yaml
+# as closely as possible. Only override values here; do not copy the full
+# upstream values.yaml.
+#
+# Installs (per README `helm install ... -f values.yaml`):
+#   helm install --create-namespace --namespace immich immich \
+#     oci://ghcr.io/immich-app/immich-charts/immich --version 0.13.2 \
+#     -f infra/immich/values.yaml
+# In GitOps this file is consumed via argocd/apps/immich-app.yaml ($homelab ref).
+
+# Shared by every Immich component (common library top-level `controllers`).
+controllers:
+  main:
+    containers:
+      main:
+        image:
+          # REQUIRED by the chart: pin to the version you want to run.
+          # Must be kept in sync with server/machine-learning tags below.
+          tag: v3.2.0
+        env:
+          REDIS_HOSTNAME: '{{ printf "%s-valkey" .Release.Name }}'
+          IMMICH_MACHINE_LEARNING_URL: '{{ printf "http://%s-machine-learning:3003" .Release.Name }}'
+
+immich:
+  persistence:
+    # Main data store shared between components. The chart does NOT create
+    # this volume; it must reference the pre-created PVC in apps/immich/.
+    library:
+      existingClaim: immich-library
+
+server:
+  enabled: true
+  controllers:
+    main:
+      containers:
+        main:
+          image:
+            repository: ghcr.io/immich-app/immich-server
+            tag: v3.2.0
+          env:
+            # Connect to the CNPG cluster in apps/immich/ via its auto-generated
+            # <cluster>-app secret (keys: host, user, password, dbname).
+            # Mirrors local/values.yaml from immich-charts.
+            DB_HOSTNAME:
+              valueFrom:
+                secretKeyRef:
+                  name: immich-database-app
+                  key: host
+            DB_USERNAME:
+              valueFrom:
+                secretKeyRef:
+                  name: immich-database-app
+                  key: user
+            DB_PASSWORD:
+              valueFrom:
+                secretKeyRef:
+                  name: immich-database-app
+                  key: password
+            DB_DATABASE_NAME:
+              valueFrom:
+                secretKeyRef:
+                  name: immich-database-app
+                  key: dbname
+  # --- External library (Photo Backup from docker-compose) ---
+  # docker-compose mounted host './data/Photo Backup' at container path
+  # '/Volumes/T7 Shield/Photo Backup 1-4-2023' (that container path is what is
+  # registered in Immich's External Library settings and must stay identical).
+  # To re-attach it after copying the data onto the Talos node:
+  #   1. Copy the Photo Backup folder to the node, e.g. /opt/immich-external/photo-backup
+  #   2. Uncomment the block below and adjust hostPath to that node path.
+  #   3. Keep mountPath EXACTLY as below (with quotes: it contains spaces).
+  # NOTE: hostPath ties immich-server to one node; for multi-node HA move this
+  # to NFS and switch type to nfs with server/path instead.
+  # persistence:
+  #   photo-backup:
+  #     enabled: true
+  #     type: hostPath
+  #     hostPath: /opt/immich-external/photo-backup
+  #     hostPathType: DirectoryOrCreate
+  #     mountPath: "/Volumes/T7 Shield/Photo Backup 1-4-2023"
+  #     readOnly: true
+
+machine-learning:
+  enabled: true
+  controllers:
+    main:
+      containers:
+        main:
+          image:
+            repository: ghcr.io/immich-app/immich-machine-learning
+            tag: v3.2.0
+  persistence:
+    cache:
+      enabled: true
+      # Persistent cache avoids re-downloading ML models on every restart.
+      type: persistentVolumeClaim
+      size: 10Gi
+      accessMode: ReadWriteOnce
+      storageClass: local-path
+
+valkey:
+  enabled: true
+  controllers:
+    main:
+      containers:
+        main:
+          image:
+            repository: docker.io/valkey/valkey
+            tag: 9.1-alpine@sha256:a35428eba9043cc0b79dbe54100f0c92784f2de00ad09b01182bfb1c5c83d1bd
+  persistence:
+    data:
+      enabled: true
+      # Keep job queues across restarts; switch back to `type: emptyDir` if you
+      # would rather run queue storage ephemerally.
+      type: persistentVolumeClaim
+      size: 1Gi
+      accessMode: ReadWriteOnce
+      storageClass: local-path

@@ -19,7 +19,7 @@ Applications:
 - [x] Minecraft Proxy + Limbo Server (mc.dsns.dev)
 - [x] Web Proxy
   - [x] V2Ray VPN
-  - [ ] Immich
+  - [x] Immich
   - [ ] T3 Code
 - [ ] Wireguard VPN
 
