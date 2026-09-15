@@ -41,12 +41,12 @@ talosctl gen secrets -o _talos/secrets.yaml --from-controlplane-config _talos/co
 
 3. Talos Configuration (skip if not using Talos)
 
-Replace `<node-1>`, `<node-2>`, and `<node-3>` with the IPs of each node. Feel free to add more than three nodes just by appending more. 
+Replace `<node-1>`, `<node-2>`, and `<node-3>` with the IPs of each node. Feel free to add more than three nodes just by appending more.
 
 ```bash
-talosctl apply-config --insecure -n <node-1> --file _talos/controlplane.yaml
-talosctl apply-config --insecure -n <node-2> --file _talos/controlplane.yaml
-talosctl apply-config --insecure -n <node-3> --file _talos/controlplane.yaml
+talosctl apply-config --insecure -n <node-1> --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-01.yaml
+talosctl apply-config --insecure -n <node-2> --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-02.yaml
+talosctl apply-config --insecure -n <node-3> --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-03.yaml
 
 talosctl config merge _talos/talosconfig
 
@@ -56,14 +56,6 @@ talosctl config node <node-1> <node-2> <node-3>
 talosctl bootstrap -n <node-1>
 talosctl kubeconfig -n 10.3.3.8
 
-# change names for easier recognition
-talosctl patch mc -n <node-1> --patch @talos/nodes/cp-01.yaml
-talosctl patch mc -n <node-2> --patch @talos/nodes/cp-02.yaml
-talosctl patch mc -n <node-3> --patch @talos/nodes/cp-03.yaml
-
-kubectl get nodes -A -o wide
-# delete all of the randomly generated ones
-# for instance: kubectl delete node talos-6c6-3jr talos-8vj-2ty talos-apa-9r2
 kubectl get nodes -A -o wide
 ```
 
@@ -92,7 +84,7 @@ Argo CD will watch files in `argocd/apps/`, any changes pushed to `main` will be
 ## Additional Talos Information
 
 To update Talos or add new nodes:
-1. Update `controlplane-patch.yml` with new changes.
+1. Update `controlplane-patch.yml` with new changes. If you want a custom name for your new node, add it in `talos/nodes/cp-xx.yaml`.
 
 2. Generate new config
 ```bash
@@ -104,7 +96,7 @@ talosctl gen config homelab https://10.3.3.8:6443 \
 
 3. Apply
 ```bash
-talosctl apply-config --insecure -n <node-4> --file _talos/controlplane.yaml
+talosctl apply-config --insecure -n <node-4> --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-04.yaml
 talosctl config endpoint <node-4>
 talosctl config node <node-4>
 ```
