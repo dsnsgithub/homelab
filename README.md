@@ -46,7 +46,13 @@ kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/latest/
 
 Install the `kubeseal` CLI locally. Find files with `*.TEMPLATE.yaml` and generate the required secret.
 
-4. Deploy Repository
+4. Allow ArgoCD to manage EndpointSlices
+```bash
+kubectl -n argocd edit cm argocd-cm
+```
+Delete the `resource.exclusions` block listing `Endpoints` / `EndpointSlice`. ArgoCD v3 excludes them by default, but the web proxy needs manually managed EndpointSlices for external backends. Harmless at homelab scale.
+
+5. Deploy Repository
 ```bash
 kubectl apply -f argocd/root-app.yaml
 ```
