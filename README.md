@@ -34,6 +34,9 @@ If you already have an existing Kubernetes cluster, skip steps 2 and 3.
 2. Generate Config
 ```bash
 talosctl gen config homelab https://10.3.3.8:6443 --config-patch @talos/controlplane-patch.yaml --output-dir _talos
+
+# save secrets for later
+talosctl gen secrets -o _talos/secrets.yaml --from-controlplane-config _talos/controlplane.yaml
 ```
 
 3. Talos Configuration (skip if not using Talos)
@@ -84,3 +87,24 @@ kubectl apply -f argocd/root-app.yaml
 ```
 
 Argo CD will watch files in `argocd/apps/`, any changes pushed to `main` will be synced/deployed within around 3 minutes.
+
+
+## Additional Talos Information
+
+To update Talos or add new nodes:
+1. Update `controlplane-patch.yml` with new changes.
+
+2. Generate new config
+```bash
+talosctl gen config homelab https://10.3.3.8:6443 \
+  --with-secrets _talos/secrets.yaml \
+  --config-patch-control-plane @talos/controlplane-patch.yaml \
+  --output-dir _talos
+```
+
+3. Apply
+```bash
+talosctl apply-config --insecure -n <node-4> --file _talos/controlplane.yaml
+talosctl config endpoint <node-4>
+talosctl config node <node-4>
+```
