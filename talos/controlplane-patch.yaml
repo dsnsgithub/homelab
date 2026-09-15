@@ -20,3 +20,14 @@ machine:
 apiVersion: v1alpha1
 kind: KubeNodeConfig
 taints: {}
+---
+# UTM VMs use VirtIO disks, which enumerate as /dev/vda (not /dev/sda).
+# Override the install disk selector so provisioning finds the disk.
+# If a node has multiple virtio disks (e.g. cloud-init ISO), see
+# talos/node-overrides/README.md.
+apiVersion: v1alpha1
+kind: UnattendedInstallConfig
+provisioning:
+  diskSelector:
+    match: disk.size >= 20u * GB
+  wipe: false
