@@ -96,8 +96,6 @@ talosctl gen config homelab https://10.3.3.8:6443 \
 
 3. Apply
 ```bash
-# create talos/nodes/cp-04.yaml with the new node's hostname first,
-# then apply with its per-node patch so it joins with the right name
 talosctl apply-config --insecure -n <node-4> --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-04.yaml
 talosctl config endpoint <node-4>
 talosctl config node <node-4>
