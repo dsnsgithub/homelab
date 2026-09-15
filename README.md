@@ -18,7 +18,7 @@
 - **Nodes:** `talos-m2` (M2 Mac mini / UTM, `10.3.3.9`) · `talos-m4` (M4 Mac mini / UTM, `10.3.3.190`) · `talos-raider` (Proxmox VM, `10.3.3.192`) — all control-plane, all schedulable, bridged on `10.3.3.0/24`. Details in [Hardware](docs/hardware.md).
 - **VIPs:** `10.3.3.8` API (Talos VIP) · `10.3.3.9` Argo CD · `10.3.3.10` Traefik + Minecraft (kube-vip ARP). Details in [Networking](docs/networking.md).
 - **Stack:** Talos `v1.14.0` · K8s `v1.37.0` · kube-vip `v1.0.4` · Traefik · cert-manager (Let's Encrypt + Cloudflare) · Sealed Secrets. Full table in [Architecture](docs/architecture.md).
-- **Apps:** ✅ Minecraft Velocity + Limbo · ✅ V2Ray · ✅ Web proxy · ⬜ Immich · ⬜ T3 Code · ⬜ WireGuard. See [Applications](docs/applications.md).
+- **Apps:** Live: Minecraft Velocity + Limbo, V2Ray, Web proxy. Planned: Immich, T3 Code, WireGuard. See [Applications](docs/applications.md).
 
 ## Quickstart
 

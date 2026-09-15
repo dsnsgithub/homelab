@@ -2,12 +2,12 @@
 
 | App | Namespace | Status | Entry |
 |-----|-----------|--------|-------|
-| Minecraft Velocity + Limbo (`mc.dsns.dev`) | `minecraft` | ✅ Deployed (2 replicas, `itzg/mc-proxy:java25`, MC `26.2`, Velocity + Limbo handler + Simple Voice Chat) | `10.3.3.10:25577` TCP+UDP |
-| Web Proxy (Traefik IngressRoutes) | `web-proxy` | ✅ Deployed | `10.3.3.10:443` |
-| V2Ray VPN | `v2ray-vpn` | ✅ Deployed (2 replicas) | `vray.dsns.dev` |
-| Immich | — | ⬜ Planned (`immich.dsns.dev` route + slice stub exists, backend `.172`) | — |
-| T3 Code (`code.dsns.dev`) | — | ⬜ Planned (route + slice stub exists, backend `.195`) | — |
-| WireGuard VPN | — | ⬜ Planned | — |
+| Minecraft Velocity + Limbo (`mc.dsns.dev`) | `minecraft` | Deployed (2 replicas, `itzg/mc-proxy:java25`, MC `26.2`, Velocity + Limbo handler + Simple Voice Chat) | `10.3.3.10:25577` TCP+UDP |
+| Web Proxy (Traefik IngressRoutes) | `web-proxy` | Deployed | `10.3.3.10:443` |
+| V2Ray VPN | `v2ray-vpn` | Deployed (2 replicas) | `vray.dsns.dev` |
+| Immich | — | Planned (`immich.dsns.dev` route + slice stub exists, backend `.172`) | — |
+| T3 Code (`code.dsns.dev`) | — | Planned (route + slice stub exists, backend `.195`) | — |
+| WireGuard VPN | — | Planned | — |
 
 ## Details
 
