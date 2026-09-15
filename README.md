@@ -43,7 +43,14 @@ Talos `v1.14.0`, Kubernetes `v1.37.0`, kube-vip `v1.0.4`, Traefik, cert-manager 
 
 ### Apps
 
-Live: Minecraft Velocity + Limbo, V2Ray, Web proxy. Planned: Immich, T3 Code, WireGuard. See [Applications](docs/applications.md).
+- [x] Minecraft Velocity + Limbo — `mc.dsns.dev` (`10.3.3.10:25577`)
+- [x] V2Ray VPN — `vray.dsns.dev`
+- [x] Web proxy (Traefik IngressRoutes) — `10.3.3.10:443`
+- [ ] Immich — `immich.dsns.dev` (planned)
+- [ ] T3 Code — `code.dsns.dev` (planned)
+- [ ] WireGuard VPN (planned)
+
+See [Applications](docs/applications.md) for details.
 
 ## Quickstart
 
