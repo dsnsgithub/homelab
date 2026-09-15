@@ -1,21 +1,19 @@
 # Operations
 
-Everything after setup: changing apps, growing the cluster, and fixing problems.
+## GitOps Workflow
 
-## Everyday Changes
+Normal changes follow this loop, and no manual install commands are needed:
 
-The normal loop — no manual install commands needed:
-
-1. Edit files in `infra/` or `apps/`, or add a new `argocd/apps/<name>-app.yaml` for something new.
+1. Edit manifests in `infra/` or `apps/`, or add `argocd/apps/<name>-app.yaml` for a new component.
 2. Push to `main`.
-3. Argo CD notices within ~3 minutes and applies the change by itself.
-4. Check it worked: run `argocd app list` or open `https://10.3.3.9`.
+3. Argo CD auto-syncs within about 3 minutes. Prune removes deleted objects, and selfHeal reverts manual `kubectl` edits.
+4. Verify with `argocd app list` or in the UI at `https://10.3.3.9`.
 
-`argocd/root-app.yaml` is the only thing ever installed by hand (during setup). Everything else flows from it automatically.
+`argocd/root-app.yaml` is the only object applied by hand after bootstrap. Everything else is a child Application of the root.
 
-## Refreshing the OS Settings
+## Regenerate Talos Config
 
-After editing the shared OS settings in `talos/controlplane-patch.yaml`, rebuild the ID cards from your saved master keys:
+After editing `talos/controlplane-patch.yaml`, re-render the configs from the saved master keys in `_talos/secrets.yaml`:
 
 ```bash
 talosctl gen config homelab https://10.3.3.8:6443 \
@@ -24,10 +22,10 @@ talosctl gen config homelab https://10.3.3.8:6443 \
   --output-dir _talos
 ```
 
-## Add a Machine
+## Add a Node
 
-1. Create `talos/nodes/cp-04.yaml` containing the new machine's name.
-2. Rebuild the ID cards (above), then hand the new machine its card and introduce it:
+1. Add `talos/nodes/cp-04.yaml` with the new hostname, using the same `HostnameConfig` shape as the existing three files.
+2. Regenerate the configs as shown above, then apply the new node config and register it:
 
 ```bash
 talosctl apply-config --insecure -n <node-4> \
@@ -36,42 +34,42 @@ talosctl config endpoint <node-4>
 talosctl config node <node-4>
 ```
 
-3. Confirm it joined: `talosctl etcd status` (the shared decision-making is healthy) and `kubectl get nodes` (shows `Ready`).
+3. Verify membership and consensus with `talosctl etcd status` and `kubectl get nodes`.
 
-## Updating Talos / Kubernetes
+## Upgrade Talos and Kubernetes
 
-Update one machine at a time and wait until it says `Ready` before touching the next. Never update two at once: the machines vote on every decision, and two offline machines out of three means no majority.
+Upgrade one node at a time and wait for `Ready` between nodes. etcd needs 2 of 3 members online, so upgrading two nodes at once would stall writes:
 
 ```bash
-talosctl upgrade -n <each-machine> --image ghcr.io/siderolabs/installer:vX.Y.Z
+talosctl upgrade -n <each-node> --image ghcr.io/siderolabs/installer:vX.Y.Z
 ```
 
-## Changing Passwords
+## Secrets Rotation
 
-Edit the values, re-lock with the cluster's current key (`kubeseal --fetch-cert`), and push via Git like any other change. The Cloudflare login lives at `infra/cert-manager/cloudflare-secret.sealed.yaml`.
+Fetch the controller current public certificate with `kubeseal --fetch-cert`, re-seal the secret, and push through Git like any other change. The Cloudflare token lives at `infra/cert-manager/cloudflare-secret.sealed.yaml`. If the controller certificate is ever replaced, re-seal every sealed file, because the old files will stop decrypting.
 
 ## Backups
 
-The shared decision log (called etcd) is automatically copied on all 3 machines — that plus this repo is the whole system. The two things to keep offline somewhere safe are `_talos/secrets.yaml` (master keys) and `talosconfig` (admin login). With those plus this repo, the cluster can be rebuilt from scratch.
+State lives in etcd (replicated 3 ways) and intent lives in this repo. The two irreplaceable local artifacts are `_talos/secrets.yaml` (cluster PKI and credentials) and `talosconfig` (admin access), so keep copies offline. Everything else rebuilds from Git plus the sealed secrets.
 
-## When Something Breaks
+## Troubleshooting
 
-| What you see | What to check (plain words first, command after) |
+| Symptom | Check |
 |---------|-------|
-| Apps unreachable at `10.3.3.8:6443` | Is the shared control address up? Check each machine's addresses and confirm all VMs are bridged on the same home network: `talosctl -n <machine-address> get addresses` |
-| `.9` / `.10` websites silent | Is the address-moving helper alive? Look at its copies and logs — the home router may also block machines from claiming addresses: `kubectl -n kube-system get ds kube-vip-ds` |
-| Argo CD shows an app out of sync | Is it a real problem or just mid-sync? Compare the app list and confirm the repo/branch/path in `root-app.yaml`: `argocd app list` |
-| Website has no HTTPS certificate | Are certificates being issued? Check certificate status, the issuer, the Cloudflare login, and the issuer's logs: `kubectl -n web-proxy get cert` |
-| A locked password won't unlock | Was the cluster's key replaced? Re-lock the password with the current key (`kubeseal --fetch-cert`) and push again |
-| App crashes on one chip family | Does the app support both Apple and PC chips? Look at the pod description — "exec format" or image-pull errors mean a one-chip-only image: `kubectl describe pod` |
-| UTM machine loses network after reboot | Did the virtual network cable come unplugged? Re-attach bridged mode in UTM — Talos always picks the first physical network card |
+| `kubectl` cannot reach `10.3.3.8:6443` | Run `talosctl -n <node-ip> get addresses` on each node to confirm the VIP exists, and confirm all NICs are bridged on one L2 segment. |
+| VIP `.9` or `.10` does not respond | Run `kubectl -n kube-system get ds kube-vip-ds` and read the pod logs. If the pods are healthy, suspect AP client isolation or a switch filtering gratuitous ARP. |
+| Argo CD app is OutOfSync or Degraded | Run `argocd app list` and `kubectl -n argocd get app <name>`. Confirm the revision and path in `root-app.yaml`, and check whether the app needs a sync-wave or ignore-differences rule. |
+| Certificate stays NotReady | Run `kubectl -n web-proxy describe cert <name>` and `kubectl describe clusterissuer letsencrypt-prod`. Validate that the Cloudflare token still has the DNS-Edit scope, and read the `cert-manager` controller logs. |
+| SealedSecret does not decrypt | The controller certificate may have rotated. Re-fetch the certificate, re-seal the secret, and confirm the sealed object targets the correct namespace and name, because scoping is strict by default. |
+| Pod fails on one architecture only | Run `kubectl describe pod`. An `exec format error` or image-pull failure means a single-arch image, so pin a multi-arch tag. |
+| UTM VM loses its network after reboot | Re-attach bridged mode in the UTM settings. Talos binds `deviceSelector: physical: true` to the first physical NIC it finds, so a detached interface changes the match. |
 
 ## Roadmap
 
-- [x] Self-healing cluster, address failover, autopilot installs, automatic HTTPS, Minecraft, V2Ray
+- [x] HA Talos, kube-vip service LB, Argo CD Root App, wildcard TLS, Minecraft, V2Ray and web proxy
 - [ ] Immich (`immich.dsns.dev`)
 - [ ] T3 Code (`code.dsns.dev`)
 - [ ] WireGuard VPN
-- [ ] Shared storage for apps with data (options: Longhorn / NFS — TODO)
-- [ ] Backup tested with a real restore drill
-- [ ] Health monitoring + alerts
+- [ ] Persistent storage for stateful apps (Longhorn or NFS, still undecided)
+- [ ] Backup restore drill (rebuild from `_talos/` and Git on spare VMs)
+- [ ] Monitoring (kube-prometheus-stack with alerting)

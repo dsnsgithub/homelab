@@ -1,26 +1,26 @@
 # Architecture
 
-Three machines working as one computer. Each machine runs the same locked-down operating system and can run any app — there is no single boss machine, so any one of them can fail and everything keeps working. (The technical term for this setup is a 3-node cluster where every node is a schedulable control-plane; three is the smallest number that can safely take a vote when something disagrees.)
+This is a 3-node HA Talos cluster where every node is a control-plane member and schedulable, so there are no dedicated workers. The `control-plane` taint is removed in `talos/controlplane-patch.yaml` so pods schedule on all three nodes. Three members is the minimum for etcd quorum. etcd is the cluster's consistent datastore and it needs a majority (2 of 3) to accept writes, so any single node can fail without losing the cluster.
 
-- **Locked-down operating system:** Talos Linux. There is no login screen or SSH — you manage it remotely with a tool called `talosctl`.
-- **One shared address for control:** `10.3.3.8` always reaches a healthy machine's control panel (the Kubernetes API on port `6443`).
-- **Address failover helper:** a small program called kube-vip runs on every machine and moves the other shared addresses (`.9`, `.10`) to a survivor if one fails. See [Networking](networking.md).
-- **Autopilot:** Argo CD watches the `argocd/apps/` folder on the `main` branch and installs whatever it finds, cleaning up anything deleted and fixing anything changed by hand (within about 3 minutes). See [Operations](operations.md).
-- **Front door:** Traefik runs two copies, forces encrypted connections (plain HTTP automatically redirects to HTTPS), and passes each visitor to the right app — including apps on other home computers.
-- **Passwords in Git:** secret values are encrypted before committing, so the repository never contains a real password. Files ending in `.sealed.yaml` are safe to share; matching `.TEMPLATE.yaml` files show what fields to fill in.
+- **OS:** Talos Linux is minimal and immutable and provides no SSH access. All management goes through the `talosctl` API, for example `talosctl -n <node-ip> get addresses`.
+- **API HA:** the Talos built-in VIP `10.3.3.8` fronts `kube-apiserver:6443`, so `kubectl` keeps working through any single-node failure.
+- **Service LB:** the kube-vip DaemonSet (one pod per node) runs in service mode (`svc_enable=true`, `cp_enable=false`). It assigns the `.9` and `.10` LoadBalancer IPs and announces them over ARP, then re-announces them with gratuitous ARP on leader change. See [Networking](networking.md).
+- **GitOps:** the Argo CD Root App watches `argocd/apps/` on `main` and auto-syncs with prune and selfHeal on a poll interval around 3 minutes. Deleted files therefore delete cluster objects, and hand-edited objects get reverted. See [Operations](operations.md).
+- **Edge:** Traefik runs 2 replicas. It terminates TLS, redirects `web` to `websecure`, and routes to in-cluster Services plus external LAN backends through headless Services and manually managed EndpointSlices (static Service to IP mappings for machines outside the cluster).
+- **Secrets:** Bitnami Sealed Secrets encrypts secret values with the cluster key before they are committed. Only `*.sealed.yaml` files are committed, and each matching `*.TEMPLATE.yaml` file shows the expected fields with placeholder values.
 
 ```text
-GitHub (main) ──► Argo CD Root App ──► Foundations + Apps
-                                         ├── kube-vip (moves shared addresses on failure)
-                                         ├── cert-manager (free HTTPS certificates)
-                                         ├── Traefik (front door, 10.3.3.10)
-                                         ├── Sealed Secrets (encrypted passwords in Git)
+GitHub (main) ──► Argo CD Root App ──► Infra + Apps
+                                         ├── kube-vip (LoadBalancer VIPs)
+                                         ├── cert-manager (Let's Encrypt / Cloudflare DNS-01)
+                                         ├── Traefik (ingress, 10.3.3.10)
+                                         ├── Sealed Secrets (encrypted secrets in Git)
                                          ├── Minecraft (Velocity + Limbo, mc.dsns.dev)
                                          ├── V2Ray VPN (vray.dsns.dev)
-                                         └── Web Proxy (forwards to other home computers)
+                                         └── Web Proxy (Traefik IngressRoutes → LAN backends)
 ```
 
-This is what healthy looks like (exact output of `kubectl get nodes -A -o wide`):
+The cluster looked like this at the time of writing (output of `kubectl get nodes -A -o wide`):
 
 ```text
 NAME           STATUS   ROLES           AGE    VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE          KERNEL-VERSION          CONTAINER-RUNTIME
@@ -29,52 +29,49 @@ talos-m4       Ready    control-plane   143m   v1.37.0   10.3.3.190    <none>   
 talos-raider   Ready    control-plane   143m   v1.37.0   10.3.3.192    <none>        Talos (v1.14.0)   6.18.48-talos (amd64)   containerd://2.3.4
 ```
 
-All three say `Ready`, meaning they have joined and can take work.
+All three nodes report `Ready`, which means they have joined the cluster and accept work.
 
-> `talos-m4` shows `amd64` above but is expected `arm64` (Apple Silicon UTM guest). Verify with `kubectl get node talos-m4 -o jsonpath='{.status.nodeInfo.architecture}'`.
-
-Normally manager machines refuse regular app work; this repo turns that refusal off (`talos/controlplane-patch.yaml`), so all three machines also run apps. That is deliberate for a small home setup.
+> `talos-m4` reports `amd64` above but should be `arm64` (Apple Silicon UTM guest). Verify with `kubectl get node talos-m4 -o jsonpath='{.status.nodeInfo.architecture}'`.
 
 ## Software Stack
 
-| Piece | Version | What it does |
-|-------|---------|--------------|
-| Talos Linux | `v1.14.0`, kernel `6.18.48-talos` | Operating system on every machine, managed remotely |
-| Kubernetes | `v1.37.0` | Teamwork software that makes three machines act as one |
-| containerd | `2.3.4` | Runs each app in its own isolated box (a container) |
-| Talos built-in shared address | `10.3.3.8` | Always reaches a healthy machine's control panel |
-| kube-vip | `v1.0.4` | Moves the `.9` / `.10` addresses to a healthy machine |
-| Argo CD | `stable` release | Autopilot: installs whatever this repo describes |
-| Traefik | installed by Argo CD, address `.10` | Front door: routes visitors, 2 copies for safety |
-| cert-manager + Let's Encrypt | free certificates via Cloudflare | Issues and renews HTTPS certificates automatically |
-| Sealed Secrets | controller + `kubeseal` tool | Keeps passwords encrypted inside Git |
-| Velocity proxy (`itzg/mc-proxy:java25`) + Limbo | game version `26.2` | Minecraft server entry point, 2 copies, port 25577 |
-| V2Ray (`v2fly/v2fly-core`) | 2 copies | Private tunnel (VPN), reached at `vray.dsns.dev` |
-| Traefik forwarding rules | — | Sends each website to its home computer by address |
+| Layer | Component | Version / source | Notes |
+|-------|-----------|------------------|-------|
+| OS | Talos Linux | `v1.14.0`, kernel `6.18.48-talos` | Immutable, API-driven |
+| Kubernetes | kube-apiserver / kubelet | `v1.37.0` | etcd quorum across 3 control-plane nodes |
+| Runtime | containerd | `2.3.4` | Container runtime on every node |
+| Cluster VIP | Talos built-in VIP | `10.3.3.8` | API high availability |
+| Service LB | kube-vip | `v1.0.4` | ARP announcements, service mode only |
+| GitOps | Argo CD | `stable` manifest | Root App auto-sync, prune and selfHeal |
+| Ingress | Traefik | Helm via Argo CD, `values.yaml` pins `.10` | 2 replicas |
+| TLS | cert-manager and Let's Encrypt prod | DNS-01 via Cloudflare | Wildcard certs, auto-renew |
+| Secrets | Bitnami Sealed Secrets | `controller.yaml` (latest) and `kubeseal` CLI | Encrypted in Git |
+| Game | Velocity proxy (`itzg/mc-proxy:java25`) and Limbo | MC `26.2` | 2 replicas, TCP and UDP 25577 |
+| VPN | V2Ray (`v2fly/v2fly-core`) | 2 replicas | `vray.dsns.dev:10086` |
+| Proxy | Traefik IngressRoutes | Defined in-repo | Hostname to Service routing, including LAN backends |
+
+Rows marked "Defined in-repo" have no upstream version because they are configured in this repository.
 
 ## Repository Layout
 
 ```text
 .
 ├── argocd/
-│   ├── root-app.yaml          # The one file applied by hand: tells Argo CD what to watch
-│   └── apps/                  # One install instruction per foundation piece / app
+│   ├── root-app.yaml          # Root Application: watches argocd/apps on main
+│   └── apps/                  # One Application per infra component / app
 ├── infra/
-│   ├── argocd-server-lb/      # Gives the Argo CD website its address (.9)
-│   ├── cert-manager/          # Certificate settings + encrypted Cloudflare login
-│   ├── kube-vip/              # The address-failover helper and its permissions
-│   └── traefik/               # Front-door settings (2 copies, address .10, force HTTPS)
+│   ├── argocd-server-lb/      # LoadBalancer Service for argocd-server (.9)
+│   ├── cert-manager/          # ClusterIssuer (LE prod / Cloudflare) and sealed token
+│   ├── kube-vip/              # DaemonSet and RBAC (service-LB mode)
+│   └── traefik/               # Helm values (replicas: 2, LB IP .10, redirect)
 ├── apps/
-│   ├── minecraft/             # Minecraft server files + encrypted passwords
-│   ├── v2ray/                 # VPN files + encrypted settings
-│   └── web-proxy/             # Website forwarding rules + certificates
+│   ├── minecraft/             # Velocity and Limbo deployments, services, sealed config
+│   ├── v2ray/                 # Deployment and Service and sealed config
+│   └── web-proxy/             # Namespace, IngressRoutes, Certificates, ext Services
 ├── talos/
-│   ├── controlplane-patch.yaml  # OS settings: shared address .8, run apps everywhere
-│   └── nodes/                   # Each machine's name (cp-01..03)
+│   ├── controlplane-patch.yaml  # VIP .8, schedulable control-plane, unattended install
+│   └── nodes/                   # Per-node hostname patches (cp-01..03)
 └── docs/                      # This documentation
 ```
 
-Two rules for the whole repo:
-
-- Passwords: only `*.sealed.yaml` (encrypted, safe) gets committed. `*.TEMPLATE.yaml` files are blank forms showing what to fill in — never put real values in them.
-- The `_talos/` folder (machine ID cards and logins generated during setup) lives only on your computer and is never committed to Git.
+Two rules apply across the whole repo. **Passwords:** only `*.sealed.yaml` files are committed, because only the cluster can decrypt them. Each `*.TEMPLATE.yaml` file documents the expected fields with placeholder values and never holds real values. **Local credentials:** the `_talos/` folder holds generated machine configs, `secrets.yaml`, `talosconfig`, and `kubeconfig`. It is git-ignored and must never be committed, because it contains cluster credentials.
