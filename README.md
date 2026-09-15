@@ -48,7 +48,7 @@ talosctl apply-config --insecure -n <node-1> --file _talos/controlplane.yaml
 talosctl apply-config --insecure -n <node-2> --file _talos/controlplane.yaml
 talosctl apply-config --insecure -n <node-3> --file _talos/controlplane.yaml
 
-export TALOSCONFIG=_talos/talosconfig
+talosctl config merge _talos/talosconfig
 
 talosctl config endpoint <node-1> <node-2> <node-3>
 talosctl config node <node-1> <node-2> <node-3>
