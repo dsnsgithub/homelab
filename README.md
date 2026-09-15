@@ -35,11 +35,7 @@ Open the Argo CD UI at `https://10.3.3.9`.
 
 | Page | Contents |
 |------|----------|
-| [Architecture](docs/architecture.md) | Design, software stack, repo layout |
-| [Hardware](docs/hardware.md) | Node inventory (M2/UTM, M4/UTM, Raider/Proxmox) |
-| [Networking](docs/networking.md) | VIPs (.8/.9/.10), kube-vip failover, DNS and TLS |
 | [Bootstrap](docs/bootstrap.md) | Prerequisites and first-time Talos to Argo CD bring-up |
-| [Applications](docs/applications.md) | Minecraft, V2Ray, web proxy, planned apps |
 | [Operations](docs/operations.md) | Day-to-day GitOps, growing the cluster, troubleshooting, roadmap |
 
 
