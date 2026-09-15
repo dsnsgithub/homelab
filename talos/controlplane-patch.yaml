@@ -10,7 +10,9 @@ machine:
 ---
 apiVersion: v1alpha1
 kind: KubeNodeConfig
-taints: {}
+taints:
+  node-role.kubernetes.io/control-plane:
+    $patch: delete
 ---
 apiVersion: v1alpha1
 kind: UnattendedInstallConfig

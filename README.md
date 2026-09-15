@@ -62,9 +62,6 @@ kubectl get nodes -A -o wide
 # delete all of the randomly generated ones
 # for instance: kubectl delete node talos-6c6-3jr talos-8vj-2ty talos-apa-9r2
 kubectl get nodes -A -o wide
-
-# allow control plane nodes to also work
-kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 ```
 
 4. Install ArgoCD
