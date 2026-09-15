@@ -2,18 +2,15 @@
 
 Kubernetes GitOps repo for my homelab, managed by ArgoCD.
 
-## Migration Checklist (currently a work in progress)
 
-Virtual IPs (created by kube-vip): 
-- `10.3.3.8` (k8s control-plane API)
-- `10.3.3.9` (argocd LoadBalancer)
-- `10.3.3.10` (shared Minecraft + Traefik LoadBalancer)
+<img width="1497" height="1118" alt="homelab" src="https://github.com/user-attachments/assets/753e09ed-d8ef-4cce-a2bc-2b3f5bdeec63" />
 
 kube-vip will elect a leader node to manage a virtual IP, auto detecting the interface to bind to.
 kube-vip has been configured to advertise over ARP and if the leader node goes offline, a new leader will be elected and sends gratuitous ARP to claim the IP.
 
 This configuration expects a minimum of three control plane nodes for quorum.
 
+## Migration Checklist (currently a work in progress)
 Applications:
 - [x] Minecraft Proxy + Limbo Server (mc.dsns.dev)
 - [x] Web Proxy
