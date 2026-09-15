@@ -4,7 +4,7 @@
 
 - `talosctl` (match Talos `v1.14.0`), `kubectl` (match K8s `v1.37.0`), `kubeseal`, `git`.
 - 3 VMs (UTM × 2, Proxmox × 1) booted from Talos ISO, same L2 as `10.3.3.0/24`, bridged networking.
-- LAN DHCP (or reservations) for `.9` / `.190` / `.192`; VIPs `.8`, `.9` (LB), `.10` free and outside the DHCP pool.
+- LAN DHCP (or reservations) for `.189` / `.190` / `.192`; VIPs `.8`, `.9` (LB), `.10` free and outside the DHCP pool.
 - Cloudflare API token (DNS-Edit) for cert-manager DNS-01.
 - Domains delegated to Cloudflare: `dsns.dev`, `seung.dev`, `mseung.dev`.
 
@@ -31,7 +31,7 @@ talosctl gen secrets -o _talos/secrets.yaml \
 
 ## 3. Apply Config & Bootstrap etcd
 
-Replace `<node-1/2/3>` with `.9`, `.190`, `.192`. Add nodes by appending lines with a matching `talos/nodes/cp-0N.yaml` hostname patch.
+Replace `<node-1/2/3>` with `.189`, `.190`, `.192`. Add nodes by appending lines with a matching `talos/nodes/cp-0N.yaml` hostname patch.
 
 ```bash
 talosctl apply-config --insecure -n <node-1> \

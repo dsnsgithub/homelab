@@ -24,7 +24,7 @@ Live state at time of writing:
 
 ```text
 NAME           STATUS   ROLES           AGE    VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE          KERNEL-VERSION          CONTAINER-RUNTIME
-talos-m2       Ready    control-plane   144m   v1.37.0   10.3.3.9      <none>        Talos (v1.14.0)   6.18.48-talos (arm64)   containerd://2.3.4
+talos-m2       Ready    control-plane   144m   v1.37.0   10.3.3.189     <none>        Talos (v1.14.0)   6.18.48-talos (arm64)   containerd://2.3.4
 talos-m4       Ready    control-plane   143m   v1.37.0   10.3.3.190    <none>        Talos (v1.14.0)   6.18.48-talos (amd64*)  containerd://2.3.4
 talos-raider   Ready    control-plane   143m   v1.37.0   10.3.3.192    <none>        Talos (v1.14.0)   6.18.48-talos (amd64)   containerd://2.3.4
 ```

@@ -29,7 +29,7 @@ Three virtual machines on the home network `10.3.3.0/24`. Each one can run any a
 
 | Node | Physical machine | Address |
 |------|------------------|---------|
-| `talos-m2` | M2 Mac mini / UTM | `10.3.3.9` |
+| `talos-m2` | M2 Mac mini / UTM | `10.3.3.189` |
 | `talos-m4` | M4 Mac mini / UTM | `10.3.3.190` |
 | `talos-raider` | Proxmox VM (borrowed) | `10.3.3.192` |
 
