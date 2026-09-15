@@ -29,6 +29,7 @@ Applications:
 git clone https://github.com/dsnsgithub/homelab/
 cd homelab
 ```
+If you already have an existing Kubernetes cluster, skip steps 2 and 3.
 
 2. Generate Config
 ```bash
