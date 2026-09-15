@@ -7,7 +7,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: HostRegexp(`.+\.mseung\.dev`) || Host(`mseung.dev`)
+    - match: HostRegexp(`.+\.mseung\.dev`)
       kind: Rule
       services:
         - name: max-proxy
@@ -24,7 +24,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: HostRegexp(`.+\.seung\.dev`) || Host(`seung.dev`)
+    - match: HostRegexp(`.+\.seung\.dev`)
       kind: Rule
       services:
         - name: max-proxy
