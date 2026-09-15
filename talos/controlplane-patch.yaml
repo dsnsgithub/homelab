@@ -4,11 +4,6 @@
 # Uses deviceSelector (not interface: eth0) to mimic kube-vip autodetect:
 # all nodes have different NIC names, so we select the single physical NIC.
 # If a node has multiple physical NICs, see talos/node-overrides/README.md.
-# allowSchedulingOnControlPlanes: 3-node homelab has no workers (k3s scheduled
-# on servers by default). Without this, Traefik/minecraft/v2ray Deployments
-# stay Pending on tainted control-planes.
-cluster:
-  allowSchedulingOnControlPlanes: true
 machine:
   network:
     interfaces:
@@ -17,3 +12,11 @@ machine:
         dhcp: true
         vip:
           ip: 10.3.3.8
+---
+# Talos v1.14+: allowSchedulingOnControlPlanes was removed, scheduling is
+# controlled by KubeNodeConfig taints. 3-node homelab has no workers (k3s
+# scheduled on servers by default) so clear the default NoSchedule taint,
+# otherwise Traefik/minecraft/v2ray stay Pending.
+apiVersion: v1alpha1
+kind: KubeNodeConfig
+taints: {}
