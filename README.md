@@ -1,4 +1,4 @@
-# Homelab — HA Talos Kubernetes with GitOps
+# DSNS's Homelab — HA Talos Kubernetes with GitOps
 
 3-node HA Talos cluster on mixed arm64/amd64 hardware, fully managed as code with Argo CD. Bootstrap once by hand, then everything flows through Git.
 
