@@ -1,6 +1,6 @@
 # DSNS's Homelab: HA Talos Kubernetes with GitOps
 
-This repository builds and operates a home Kubernetes cluster. Three Talos nodes form a single HA cluster, and Argo CD installs and synchronizes everything above the OS. Readers who understand Kubernetes concepts but have not bootstrapped a cluster should start with [Architecture](docs/architecture.md), then follow [Bootstrap](docs/bootstrap.md) to build it.
+This repository builds and operates my Kubernetes cluster. Three Talos nodes form a single HA cluster, and Argo CD installs and synchronizes everything above the OS. For more detailed information, you can check out [Architecture](docs/architecture.md) and [Bootstrap](docs/bootstrap.md) to build it.
 
 ## Quickstart
 
