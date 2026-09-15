@@ -10,6 +10,7 @@ Anything that isn't colored in the diagram can be changed, as this homelab is pl
   <img width="800" alt="Homelab architecture diagram mapping physical hosts to Talos virtual machines to the shared Kubernetes control plane, with Talos and kube-vip virtual IPs facing the public internet" src="https://github.com/user-attachments/assets/753e09ed-d8ef-4cce-a2bc-2b3f5bdeec63" />
 </p>
 
+
 ## Quickstart
 
 Bootstrap is a one-time procedure. Afterwards, every change follows the same loop: edit, push, and Argo CD syncs automatically.
@@ -23,6 +24,7 @@ kubectl apply -f argocd/root-app.yaml
 Open the Argo CD UI at `https://10.3.3.9`.
 
 ## Applications (currently migrating to the cluster)
+In addition to kube-vip, all stateless applications (proxies, VPNs) are replicated across two different nodes to minimize downtime.
 
 | | Service | Address | Status |
 |--|---------|---------|--------|
