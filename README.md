@@ -16,8 +16,8 @@ Bootstrap is a one-time procedure. Afterwards, every change follows the same loo
 
 ```bash
 git clone https://github.com/dsnsgithub/homelab/ && cd homelab
-# Assumes an existing Talos Kubernetes cluster. For first-time bring-up, see docs/bootstrap.md.
-kubectl apply -f argocd/root-app.yaml   # Root App syncs everything else within about 3 minutes
+# Assumes an existing Talos Kubernetes cluster. To start from scratch, see docs/bootstrap.md.
+kubectl apply -f argocd/root-app.yaml
 ```
 
 Open the Argo CD UI at `https://10.3.3.9`.
