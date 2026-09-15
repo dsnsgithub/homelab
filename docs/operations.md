@@ -63,13 +63,3 @@ State lives in etcd (replicated 3 ways) and intent lives in this repo. The two i
 | SealedSecret does not decrypt | The controller certificate may have rotated. Re-fetch the certificate, re-seal the secret, and confirm the sealed object targets the correct namespace and name, because scoping is strict by default. |
 | Pod fails on one architecture only | Run `kubectl describe pod`. An `exec format error` or image-pull failure means a single-arch image, so pin a multi-arch tag. |
 | UTM VM loses its network after reboot | Re-attach bridged mode in the UTM settings. Talos binds `deviceSelector: physical: true` to the first physical NIC it finds, so a detached interface changes the match. |
-
-## Roadmap
-
-- [x] HA Talos, kube-vip service LB, Argo CD Root App, wildcard TLS, Minecraft, V2Ray, and the web proxy are deployed.
-- [ ] Immich will serve `immich.dsns.dev`.
-- [ ] T3 Code Web will serve `code.dsns.dev`.
-- [ ] WireGuard VPN will provide a private tunnel.
-- [ ] Persistent storage for stateful apps is still undecided (Longhorn or NFS).
-- [ ] A backup restore drill will rebuild from `_talos/` and Git on spare VMs.
-- [ ] Monitoring will run kube-prometheus-stack with alerting.

@@ -1,6 +1,6 @@
 # Bootstrap
 
-This page documents the one-time bring-up procedure: provisioning bare Talos ISOs, forming the HA cluster, and handing management to Argo CD. It assumes familiarity with `kubectl` but no prior cluster installation experience. Each step states its purpose before giving the commands.
+This page documents the one-time bring-up procedure: building Talos ISOs, forming the HA cluster, and handing management to Argo CD. It assumes familiarity with `kubectl` but no prior cluster installation experience.
 
 ## Prerequisites
 
@@ -8,13 +8,9 @@ Install the following tools on the workstation first. `talosctl` must match Talo
 
 The cluster requires at least 3 Talos nodes. Three is the etcd quorum minimum, and every node is a schedulable control-plane member. This repository was built with 3 VMs (2 in UTM, 1 in Proxmox), all booted from the Talos ISO and bridged onto `10.3.3.0/24`. Any platform works as long as the nodes share L2 adjacency, which ARP-based VIP failover requires. Reserve one address per node (here `.189`, `.190`, and `.192`) through DHCP reservations or an equivalent mechanism, and keep the `.8`, `.9` (LB), and `.10` VIPs free and outside the DHCP pool. A Cloudflare API token scoped to DNS-Edit is required for the DNS-01 challenges, and `dsns.dev`, `seung.dev`, and `mseung.dev` must be delegated to Cloudflare.
 
-## 0. Download Talos and Boot the VMs
+## 0. Build Talos ISOs and Boot the VMs
 
-Talos ships as a bootable ISO per release and per CPU architecture. The ISO version must match `talosctl` (`v1.14.0` in this repo). Two sources provide it.
-
-**Option A: release ISO (simplest).** Download the assets from `https://github.com/siderolabs/talos/releases/tag/v1.14.0`. The UTM VMs on Apple Silicon need `talos-arm64.iso`. The Proxmox x86_64 VM needs `talos-amd64.iso`. Verify the downloads against the `sha256sum.txt` file published with the release.
-
-**Option B: factory image (custom builds).** The Talos Image Factory at `https://factory.talos.dev` assembles an installer image with additional drivers baked in (called system extensions). Select the version (`v1.14.0`), the hardware platform, and any required extensions, then download the resulting ISO. The factory records the build as a schematic ID, so the exact image can be reproduced later. This path is only needed for hardware that the stock ISO does not support. The stock ISO covers the UTM and Proxmox VMs used here.
+Build the installer ISOs in the Talos Image Factory at `https://factory.talos.dev`. Select version `v1.14.0` and add any required system extensions (extra drivers baked into the image). Build one schematic per CPU architecture: arm64 for the UTM VMs on Apple Silicon, amd64 for the Proxmox VM. The factory records each build as a schematic ID, so the exact image can be reproduced later. Download the resulting ISOs.
 
 **Create the VMs.** Give each VM at least the Talos minimums (2 vCPU, 2 GB RAM, 10 GB disk), with headroom above that because these control-plane nodes also run workloads. Every VM must use bridged networking so each node receives its own LAN address. In UTM, create a new VM, attach the arm64 ISO as a CD drive, set the network interface to bridged mode, and boot from the CD. In Proxmox, upload the amd64 ISO under Datacenter, Storage, ISO Images, then create a VM with the ISO attached and its NIC on the LAN bridge in bridge mode, and boot from the CD.
 
@@ -45,7 +41,7 @@ talosctl gen secrets -o _talos/secrets.yaml \
 
 ## 3. Apply Config and Bootstrap etcd
 
-`apply-config --insecure` pushes the machine config to a fresh node. The insecure flag is only accepted before the node holds credentials. The `--config-patch @talos/nodes/cp-0N.yaml` flag sets that node's hostname. The `bootstrap` command initializes etcd, so run it exactly once on the first node. The remaining nodes join the existing member set. The `config merge` command imports the generated `talosconfig` into `~/.talos/config`. `config endpoint` records the control-plane endpoints under management, and `config node` records the default targets for node-scoped commands.
+`apply-config --insecure` pushes the machine config to a fresh node and sets its hostname from the `--config-patch` file. Run `bootstrap` exactly once on the first node to initialize etcd. The remaining nodes join the existing member set. The rest of the commands import the generated config and point `talosctl` at the new nodes.
 
 Replace `<node-1/2/3>` with `.189`, `.190`, and `.192`. For extra nodes, add a `talos/nodes/cp-0N.yaml` hostname file and append the matching line.
 
@@ -81,11 +77,9 @@ kubectl apply -n argocd --server-side --force-conflicts \
   -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
 
-If you are rebuilding on k3s instead of Talos, disable its bundled ServiceLB and Traefik first, because `.9` and `.10` are assigned to kube-vip and this repository's Traefik.
-
 ## 5. Install Sealed Secrets
 
-The controller decrypts `SealedSecret` objects into regular Secrets at sync time. `kubeseal` runs locally against the cluster public certificate and performs the encryption.
+The controller decrypts `SealedSecret` objects into regular Secrets at sync time. `kubeseal` runs locally against the cluster public certificate and performs the encryption. A fresh cluster generates a fresh controller certificate, so every secret must be re-sealed when rebuilding from scratch.
 
 ```bash
 kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/latest/download/controller.yaml
