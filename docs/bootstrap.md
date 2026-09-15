@@ -1,27 +1,24 @@
 # Bootstrap
 
-This page documents the one-time bring-up procedure: building Talos ISOs, forming the HA cluster, and handing management to Argo CD. It assumes familiarity with `kubectl` but no prior cluster installation experience.
-
 ## Prerequisites
 
-Install the following tools on the workstation first.
+Install the following tools on your own computer first.
 
 | Tool | Version | Purpose |
 |------|---------|---------|
 | `talosctl` | Must match Talos `v1.14.0` | Node OS management |
 | `kubectl` | Must match Kubernetes `v1.37.0` | Workload management |
 | `kubeseal` | Any recent release | Secret encryption for Git |
-| `git` | Any recent release | Repository checkout |
 
-At least 3 Talos nodes are required (the etcd quorum minimum; every node is a schedulable control-plane member). This cluster runs 3 bridged VMs (2 UTM, 1 Proxmox) on `10.3.3.0/24`. Any platform works if the nodes share L2 adjacency, which ARP-based VIP failover requires. Reserve one address per node (`.189`, `.190`, and `.192` here) and keep the `.8`, `.9` (LB), and `.10` VIPs outside the DHCP pool. DNS-01 challenges require a Cloudflare DNS-Edit token, with `dsns.dev`, `seung.dev`, and `mseung.dev` delegated to Cloudflare.
+At least 3 Talos nodes are required (the etcd quorum minimum; every node is a schedulable control-plane member). This cluster runs 3 bridged VMs (2 UTM, 1 Proxmox) on `10.3.3.0/24`. Any platform works if the nodes share L2 adjacency, which ARP-based VIP failover requires. Reserve one address per node and keep the `.8`, `.9` (LB), and `.10` VIPs outside the DHCP pool. DNS-01 challenges require a Cloudflare DNS-Edit token, with `dsns.dev`, `seung.dev`, and `mseung.dev` delegated to Cloudflare.
 
 ## 0. Build Talos ISOs and Boot the VMs
 
 Build one `v1.14.0` schematic per CPU architecture in the Talos Image Factory (`https://factory.talos.dev`), adding system extensions as needed: arm64 for the UTM VMs, amd64 for the Proxmox VM. Record the schematic IDs and download the ISOs.
 
-**Create the VMs.** Give each VM at least 2 vCPU, 2 GB RAM, and 10 GB disk, with headroom for workloads. Attach the matching ISO, use bridged networking, and boot from the CD. In Proxmox, upload the ISO first under Datacenter, Storage, ISO Images.
+**Create the VMs.** Give each VM at least 2 vCPU, 2 GB RAM, and 10 GB disk, with headroom for workloads. Attach the matching ISO, use **bridged** networking, and boot from the CD. In Proxmox, upload the ISO first under Datacenter, Storage, ISO Images.
 
-**First boot.** Each node enters maintenance mode, takes a DHCP address, and prints it on the console. Confirm the three addresses match the `.189`, `.190`, and `.192` reservations. They become `<node-1/2/3>` in step 3.
+**First boot.** Each node enters maintenance mode, displaying a DHCP address. Those IPs become `<node-1/2/3>` in step 3.
 
 ## 1. Clone
 
