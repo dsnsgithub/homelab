@@ -37,7 +37,7 @@ talosctl gen config homelab https://10.3.3.8:6443 --config-patch @talos/controlp
 
 3. Talos Configuration (skip if not using Talos)
 
-Replace <node-1>, <node-2>, and <node-3> with the IPs of each node. Feel free to add more than three nodes just by appending more. 
+Replace `<node-1>`, `<node-2>`, and `<node-3>` with the IPs of each node. Feel free to add more than three nodes just by appending more. 
 
 ```bash
 talosctl apply-config --insecure -n <node-1> --file _talos/controlplane.yaml
@@ -61,6 +61,9 @@ kubectl get nodes -A -o wide
 # delete all of the randomly generated ones
 # for instance: kubectl delete node talos-6c6-3jr talos-8vj-2ty talos-apa-9r2
 kubectl get nodes -A -o wide
+
+# allow control plane nodes to also work
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 ```
 
 4. Install ArgoCD
