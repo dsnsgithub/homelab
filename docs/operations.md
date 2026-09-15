@@ -44,22 +44,6 @@ Upgrade one node at a time and wait for `Ready` between nodes. etcd needs 2 of 3
 talosctl upgrade -n <each-node> --image ghcr.io/siderolabs/installer:vX.Y.Z
 ```
 
-## Secrets Rotation
+## Secrets
 
-Fetch the controller's current public certificate with `kubeseal --fetch-cert`, re-seal the secret, and push through Git like any other change. The Cloudflare token lives at `infra/cert-manager/cloudflare-secret.sealed.yaml`. If the controller certificate is ever replaced, re-seal every sealed file, because the old files will stop decrypting.
-
-## Backups
-
-State lives in etcd (replicated 3 ways) and intent lives in this repo. The two irreplaceable local artifacts are `_talos/secrets.yaml` (cluster PKI and credentials) and `talosconfig` (admin access), so keep copies offline. Everything else rebuilds from Git plus the sealed secrets.
-
-## Troubleshooting
-
-| Symptom | Check |
-|---------|-------|
-| `kubectl` cannot reach `10.3.3.8:6443` | Run `talosctl -n <node-ip> get addresses` on each node to confirm the VIP exists, and confirm all NICs are bridged on one L2 segment. |
-| VIP `.9` or `.10` does not respond | Run `kubectl -n kube-system get ds kube-vip-ds` and read the pod logs. If the pods are healthy, suspect AP client isolation or a switch filtering gratuitous ARP. |
-| Argo CD app is OutOfSync or Degraded | Run `argocd app list` and `kubectl -n argocd get app <name>`. Confirm the revision and path in `root-app.yaml`, and check whether the app needs a sync-wave or ignore-differences rule. |
-| Certificate stays NotReady | Run `kubectl -n web-proxy describe cert <name>` and `kubectl describe clusterissuer letsencrypt-prod`. Validate that the Cloudflare token still has the DNS-Edit scope, and read the `cert-manager` controller logs. |
-| SealedSecret does not decrypt | The controller certificate may have rotated. Re-fetch the certificate, re-seal the secret, and confirm the sealed object targets the correct namespace and name, because scoping is strict by default. |
-| Pod fails on one architecture only | Run `kubectl describe pod`. An `exec format error` or image-pull failure means a single-arch image, so pin a multi-arch tag. |
-| UTM VM loses its network after reboot | Re-attach bridged mode in the UTM settings. Talos binds `deviceSelector: physical: true` to the first physical NIC it finds, so a detached interface changes the match. |
+The two irreplaceable local artifacts are `_talos/secrets.yaml` (cluster PKI and credentials) and `talosconfig` (admin access), so keep copies offline. Everything else rebuilds from Git plus the sealed secrets.
