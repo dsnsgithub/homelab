@@ -4,8 +4,7 @@ metadata:
   name: v2ray-service
   namespace: v2ray-vpn
 spec:
-  type: LoadBalancer
-  loadBalancerIP: 10.3.3.10
+  type: ClusterIP
   selector:
     app: v2ray
   ports:
