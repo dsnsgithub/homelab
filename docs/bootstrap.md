@@ -4,17 +4,24 @@ This page documents the one-time bring-up procedure: building Talos ISOs, formin
 
 ## Prerequisites
 
-Install the following tools on the workstation first. `talosctl` must match Talos `v1.14.0` and manages the node OS. `kubectl` must match Kubernetes `v1.37.0` and manages workloads. `kubeseal` encrypts secrets for storage in Git. `git` checks out and updates this repository.
+Install the following tools on the workstation first.
 
-The cluster requires at least 3 Talos nodes. Three is the etcd quorum minimum, and every node is a schedulable control-plane member. This repository was built with 3 VMs (2 in UTM, 1 in Proxmox), all booted from the Talos ISO and bridged onto `10.3.3.0/24`. Any platform works as long as the nodes share L2 adjacency, which ARP-based VIP failover requires. Reserve one address per node (here `.189`, `.190`, and `.192`) through DHCP reservations or an equivalent mechanism, and keep the `.8`, `.9` (LB), and `.10` VIPs free and outside the DHCP pool. A Cloudflare API token scoped to DNS-Edit is required for the DNS-01 challenges, and `dsns.dev`, `seung.dev`, and `mseung.dev` must be delegated to Cloudflare.
+| Tool | Version | Purpose |
+|------|---------|---------|
+| `talosctl` | Must match Talos `v1.14.0` | Node OS management |
+| `kubectl` | Must match Kubernetes `v1.37.0` | Workload management |
+| `kubeseal` | Any recent release | Secret encryption for Git |
+| `git` | Any recent release | Repository checkout |
+
+At least 3 Talos nodes are required (the etcd quorum minimum; every node is a schedulable control-plane member). This cluster runs 3 bridged VMs (2 UTM, 1 Proxmox) on `10.3.3.0/24`. Any platform works if the nodes share L2 adjacency, which ARP-based VIP failover requires. Reserve one address per node (`.189`, `.190`, and `.192` here) and keep the `.8`, `.9` (LB), and `.10` VIPs outside the DHCP pool. DNS-01 challenges require a Cloudflare DNS-Edit token, with `dsns.dev`, `seung.dev`, and `mseung.dev` delegated to Cloudflare.
 
 ## 0. Build Talos ISOs and Boot the VMs
 
-Build the installer ISOs in the Talos Image Factory at `https://factory.talos.dev`. Select version `v1.14.0` and add any required system extensions (extra drivers baked into the image). Build one schematic per CPU architecture: arm64 for the UTM VMs on Apple Silicon, amd64 for the Proxmox VM. The factory records each build as a schematic ID, so the exact image can be reproduced later. Download the resulting ISOs.
+Build one `v1.14.0` schematic per CPU architecture in the Talos Image Factory (`https://factory.talos.dev`), adding system extensions as needed: arm64 for the UTM VMs, amd64 for the Proxmox VM. Record the schematic IDs and download the ISOs.
 
-**Create the VMs.** Give each VM at least the Talos minimums (2 vCPU, 2 GB RAM, 10 GB disk), with headroom above that because these control-plane nodes also run workloads. Every VM must use bridged networking so each node receives its own LAN address. In UTM, create a new VM, attach the arm64 ISO as a CD drive, set the network interface to bridged mode, and boot from the CD. In Proxmox, upload the amd64 ISO under Datacenter, Storage, ISO Images, then create a VM with the ISO attached and its NIC on the LAN bridge in bridge mode, and boot from the CD.
+**Create the VMs.** Give each VM at least 2 vCPU, 2 GB RAM, and 10 GB disk, with headroom for workloads. Attach the matching ISO, use bridged networking, and boot from the CD. In Proxmox, upload the ISO first under Datacenter, Storage, ISO Images.
 
-**First boot.** Each node boots into maintenance mode, requests an address over DHCP, and prints its acquired addresses on the console. Record the three addresses. They become `<node-1/2/3>` in step 3, and they should match the `.189`, `.190`, and `.192` reservations.
+**First boot.** Each node enters maintenance mode, takes a DHCP address, and prints it on the console. Confirm the three addresses match the `.189`, `.190`, and `.192` reservations. They become `<node-1/2/3>` in step 3.
 
 ## 1. Clone
 
