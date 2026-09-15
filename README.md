@@ -65,7 +65,7 @@ The stack combines Talos `v1.14.0`, Kubernetes `v1.37.0`, kube-vip `v1.0.4` (ARP
 
 ### Apps
 
-- [x] Minecraft Velocity and Limbo is live at `mc.dsns.dev` (`10.3.3.10:25577`).
+- [x] Minecraft Velocity and Limbo is live at `mc.dsns.dev` (`10.3.3.10:25565`).
 - [x] V2Ray VPN is live at `vray.dsns.dev`.
 - [x] The web proxy is live at `10.3.3.10:443` (Traefik IngressRoutes).
 - [ ] Immich is planned for `immich.dsns.dev`.
