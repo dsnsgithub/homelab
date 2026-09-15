@@ -77,12 +77,12 @@ The stack combines Talos `v1.14.0`, Kubernetes `v1.37.0`, kube-vip `v1.0.4` (ARP
 
 | | Service | Address | Status |
 |--|---------|---------|--------|
-| <img src="docs/assets/icons/mc.svg" width="22" height="22" alt="Minecraft icon"> | Minecraft (Velocity proxy) | `mc.dsns.dev:25565` | Live |
-| <img src="docs/assets/icons/vray.svg" width="22" height="22" alt="V2Ray icon"> | V2Ray VPN | `vray.dsns.dev` | Live |
+| <img src="docs/assets/icons/minecraft.png" width="22" height="22" alt="Minecraft icon"> | Minecraft (Velocity proxy) | `mc.dsns.dev:25565` | Live |
+| <img src="docs/assets/icons/v2ray.png" width="22" height="22" alt="V2Ray icon"> | V2Ray VPN | `vray.dsns.dev` | Live |
 | <img src="docs/assets/icons/seung.ico" width="22" height="22" alt="seung.dev icon"> <img src="docs/assets/icons/mseung.ico" width="22" height="22" alt="mseung.dev icon"> | Web proxy (Traefik) | `*.seung.dev`, `*.mseung.dev` | Live |
 | <img src="docs/assets/icons/immich.ico" width="22" height="22" alt="Immich icon"> | Immich photo library | `immich.dsns.dev` | Planned |
 | <img src="docs/assets/icons/code.ico" width="22" height="22" alt="T3 Code icon"> | T3 Code editor | `code.dsns.dev` | Planned |
-| <img src="docs/assets/icons/wg.svg" width="22" height="22" alt="WireGuard icon"> | WireGuard VPN | None yet | Planned |
+| <img src="docs/assets/icons/wireguard.png" width="22" height="22" alt="WireGuard icon"> | WireGuard VPN | Not publicly available | Planned |
 
 See [Applications](docs/applications.md) for details.
 

@@ -4,14 +4,14 @@ This page lists what runs on the cluster today and what is planned. A replica co
 
 | Icon | App | Namespace | Status | Entry |
 |------|-----|-----------|--------|-------|
-| <img src="assets/icons/mc.svg" width="22" height="22" alt="Minecraft icon"> | Minecraft Velocity and Limbo (`mc.dsns.dev`) | `minecraft` | Live (2 replicas, `itzg/mc-proxy:java25`, MC `26.2`, Velocity and Limbo handler and Simple Voice Chat) | `10.3.3.10:25565` TCP (gameplay), `:25577` UDP (voice) |
+| <img src="assets/icons/minecraft.png" width="22" height="22" alt="Minecraft icon"> | Minecraft Velocity and Limbo (`mc.dsns.dev`) | `minecraft` | Live (2 replicas, `itzg/mc-proxy:java25`, MC `26.2`, Velocity and Limbo handler and Simple Voice Chat) | `10.3.3.10:25565` TCP (gameplay), `:25577` UDP (voice) |
 | <img src="assets/icons/seung.ico" width="22" height="22" alt="seung.dev icon"> <img src="assets/icons/mseung.ico" width="22" height="22" alt="mseung.dev icon"> | Web Proxy (Traefik IngressRoutes) | `web-proxy` | Live | `10.3.3.10:443` |
-| <img src="assets/icons/vray.svg" width="22" height="22" alt="V2Ray icon"> | V2Ray VPN | `v2ray-vpn` | Live (2 replicas, `v2fly/v2fly-core`) | `vray.dsns.dev:10086` |
+| <img src="assets/icons/v2ray.png" width="22" height="22" alt="V2Ray icon"> | V2Ray VPN | `v2ray-vpn` | Live (2 replicas, `v2fly/v2fly-core`) | `vray.dsns.dev:10086` |
 | <img src="assets/icons/immich.ico" width="22" height="22" alt="Immich icon"> | Immich | Not deployed | Planned (IngressRoute and EndpointSlice stub exists, LAN backend `.172` pending) | `immich.dsns.dev` |
 | <img src="assets/icons/code.ico" width="22" height="22" alt="T3 Code icon"> | T3 Code | Not deployed | Planned (IngressRoute and EndpointSlice stub exists, LAN backend `.195` pending) | `code.dsns.dev` |
-| <img src="assets/icons/wg.svg" width="22" height="22" alt="WireGuard icon"> | WireGuard VPN | Not deployed | Planned, no manifests yet | None |
+| <img src="assets/icons/wireguard.png" width="22" height="22" alt="WireGuard icon"> | WireGuard VPN | Not deployed | Planned, no manifests yet | Not publicly available |
 
-Site icons are the real favicons served by each site. Minecraft and the VPN endpoints serve no website, so they use monogram placeholders.
+All icons are the official marks served by each project or site.
 
 ## Details
 
