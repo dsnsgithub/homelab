@@ -45,7 +45,7 @@ talosctl gen secrets -o _talos/secrets.yaml \
 
 `apply-config --insecure` pushes the machine config to a fresh node and sets its hostname from the `--config-patch` file. Run `bootstrap` exactly once on the first node to initialize etcd. The remaining nodes join the existing member set. The rest of the commands import the generated config and point `talosctl` at the new nodes.
 
-Replace `<node-1/2/3>` with the IPs for your nodes. For extra nodes, add a `talos/nodes/cp-0N.yaml` hostname file and append the matching line.
+Replace `<node-1/2/3>` with the IPs for your nodes. For extra nodes, add a `talos/nodes/cp-0N.yaml` hostname file and check out [Operations](docs/operations.md) for more information.
 
 ```bash
 talosctl apply-config --insecure -n <node-1> \
