@@ -16,15 +16,13 @@ Open the Argo CD UI at `https://10.3.3.9`.
 
 ## Status
 
-Live service health is published on the [status page](https://status.seung.dev/) (Kener), which probes each public endpoint independently of this cluster and keeps 90 days of uptime history per monitor.
+Live service health is published on the status page (Kener), which probes each public endpoint independently of this cluster and keeps 90 days of uptime history per monitor.
 
-<p align="center">
+<p>
   <a href="https://status.seung.dev/">
-    <img src="docs/assets/status-page.png" alt="Status page showing 90-day uptime for dsns.dev, mc.dsns.dev, immich.dsns.dev, and vray.dsns.dev" width="800">
+    <img src="docs/assets/icons/kener.png" width="18" height="18" alt="Status page icon"> <strong>status.seung.dev</strong>
   </a>
 </p>
-
-<p align="center"><em>Captured September 2026. Open the <a href="https://status.seung.dev/">live status page</a> for current data.</em></p>
 
 ## How It Works
 
@@ -75,14 +73,16 @@ See [Networking](docs/networking.md) for failover details.
 
 The stack combines Talos `v1.14.0`, Kubernetes `v1.37.0`, kube-vip `v1.0.4` (ARP failover for Service LB IPs), Traefik (ingress), cert-manager (Let's Encrypt through Cloudflare DNS-01), and Sealed Secrets (encrypted secrets in Git). The full version table is in [Architecture](docs/architecture.md).
 
-### Apps
+### Apps I Run
 
-- [x] Minecraft Velocity and Limbo is live at `mc.dsns.dev` (`10.3.3.10:25565`).
-- [x] V2Ray VPN is live at `vray.dsns.dev`.
-- [x] The web proxy is live at `10.3.3.10:443` (Traefik IngressRoutes).
-- [ ] Immich is planned for `immich.dsns.dev`.
-- [ ] T3 Code is planned for `code.dsns.dev`.
-- [ ] WireGuard VPN is planned.
+| | Service | Address | Status |
+|--|---------|---------|--------|
+| <img src="docs/assets/icons/mc.svg" width="22" height="22" alt="Minecraft icon"> | Minecraft (Velocity proxy) | `mc.dsns.dev:25565` | Live |
+| <img src="docs/assets/icons/vray.svg" width="22" height="22" alt="V2Ray icon"> | V2Ray VPN | `vray.dsns.dev` | Live |
+| <img src="docs/assets/icons/seung.ico" width="22" height="22" alt="seung.dev icon"> <img src="docs/assets/icons/mseung.ico" width="22" height="22" alt="mseung.dev icon"> | Web proxy (Traefik) | `*.seung.dev`, `*.mseung.dev` | Live |
+| <img src="docs/assets/icons/immich.ico" width="22" height="22" alt="Immich icon"> | Immich photo library | `immich.dsns.dev` | Planned |
+| <img src="docs/assets/icons/code.ico" width="22" height="22" alt="T3 Code icon"> | T3 Code editor | `code.dsns.dev` | Planned |
+| <img src="docs/assets/icons/wg.svg" width="22" height="22" alt="WireGuard icon"> | WireGuard VPN | None yet | Planned |
 
 See [Applications](docs/applications.md) for details.
 

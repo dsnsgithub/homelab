@@ -2,14 +2,16 @@
 
 This page lists what runs on the cluster today and what is planned. A replica count of 2 means the app runs twice, so a single pod failure causes no outage.
 
-| App | Namespace | Status | Entry |
-|-----|-----------|--------|-------|
-| Minecraft Velocity and Limbo (`mc.dsns.dev`) | `minecraft` | Live (2 replicas, `itzg/mc-proxy:java25`, MC `26.2`, Velocity and Limbo handler and Simple Voice Chat) | `10.3.3.10:25565` TCP (gameplay), `:25577` UDP (voice) |
-| Web Proxy (Traefik IngressRoutes) | `web-proxy` | Live | `10.3.3.10:443` |
-| V2Ray VPN | `v2ray-vpn` | Live (2 replicas, `v2fly/v2fly-core`) | `vray.dsns.dev:10086` |
-| Immich | Not deployed | Planned (IngressRoute and EndpointSlice stub exists, LAN backend `.172` pending) | `immich.dsns.dev` |
-| T3 Code | Not deployed | Planned (IngressRoute and EndpointSlice stub exists, LAN backend `.195` pending) | `code.dsns.dev` |
-| WireGuard VPN | Not deployed | Planned, no manifests yet | None |
+| Icon | App | Namespace | Status | Entry |
+|------|-----|-----------|--------|-------|
+| <img src="assets/icons/mc.svg" width="22" height="22" alt="Minecraft icon"> | Minecraft Velocity and Limbo (`mc.dsns.dev`) | `minecraft` | Live (2 replicas, `itzg/mc-proxy:java25`, MC `26.2`, Velocity and Limbo handler and Simple Voice Chat) | `10.3.3.10:25565` TCP (gameplay), `:25577` UDP (voice) |
+| <img src="assets/icons/seung.ico" width="22" height="22" alt="seung.dev icon"> <img src="assets/icons/mseung.ico" width="22" height="22" alt="mseung.dev icon"> | Web Proxy (Traefik IngressRoutes) | `web-proxy` | Live | `10.3.3.10:443` |
+| <img src="assets/icons/vray.svg" width="22" height="22" alt="V2Ray icon"> | V2Ray VPN | `v2ray-vpn` | Live (2 replicas, `v2fly/v2fly-core`) | `vray.dsns.dev:10086` |
+| <img src="assets/icons/immich.ico" width="22" height="22" alt="Immich icon"> | Immich | Not deployed | Planned (IngressRoute and EndpointSlice stub exists, LAN backend `.172` pending) | `immich.dsns.dev` |
+| <img src="assets/icons/code.ico" width="22" height="22" alt="T3 Code icon"> | T3 Code | Not deployed | Planned (IngressRoute and EndpointSlice stub exists, LAN backend `.195` pending) | `code.dsns.dev` |
+| <img src="assets/icons/wg.svg" width="22" height="22" alt="WireGuard icon"> | WireGuard VPN | Not deployed | Planned, no manifests yet | None |
+
+Site icons are the real favicons served by each site. Minecraft and the VPN endpoints serve no website, so they use monogram placeholders.
 
 ## Details
 
@@ -21,8 +23,6 @@ This page lists what runs on the cluster today and what is planned. A replica co
 ## Service Status
 
 Public uptime is tracked on the [status page](https://status.seung.dev/) (Kener), which probes each endpoint from outside the cluster and keeps 90 days of history per monitor.
-
-![Status page showing 90-day uptime for dsns.dev, mc.dsns.dev, immich.dsns.dev, and vray.dsns.dev](assets/status-page.png)
 
 The current monitors map to the apps above: `dsns.dev`, `mc.dsns.dev (proxy)`, `immich.dsns.dev`, and `vray.dsns.dev`. The screenshot was captured in September 2026, so open the live page for current data. In-cluster metrics and alerting remain on the roadmap (see [Operations](operations.md#roadmap)).
 
