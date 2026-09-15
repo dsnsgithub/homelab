@@ -17,6 +17,18 @@ cd homelab
 
 If you are rebuilding onto an existing healthy cluster, skip to [step 4](#4-install-argo-cd).
 
+## 0. Download Talos and Boot the VMs
+
+Talos ships as a bootable ISO per release and per CPU architecture. The ISO version must match `talosctl` (`v1.14.0` in this repo). Two sources provide it.
+
+**Option A: release ISO (simplest).** Download the assets from `https://github.com/siderolabs/talos/releases/tag/v1.14.0`. The UTM VMs on Apple Silicon need `talos-arm64.iso`. The Proxmox x86_64 VM needs `talos-amd64.iso`. Verify the downloads against the `sha256sum.txt` file published with the release.
+
+**Option B: factory image (custom builds).** The Talos Image Factory at `https://factory.talos.dev` assembles an installer image with additional drivers baked in (called system extensions). Select the version (`v1.14.0`), the hardware platform, and any required extensions, then download the resulting ISO. The factory records the build as a schematic ID, so the exact image can be reproduced later. This path is only needed for hardware that the stock ISO does not support. The stock ISO covers the UTM and Proxmox VMs used here.
+
+**Create the VMs.** Give each VM at least the Talos minimums (2 vCPU, 2 GB RAM, 10 GB disk), with headroom above that because these control-plane nodes also run workloads. Every VM must use bridged networking so each node receives its own LAN address. In UTM, create a new VM, attach the arm64 ISO as a CD drive, set the network interface to bridged mode, and boot from the CD. In Proxmox, upload the amd64 ISO under Datacenter, Storage, ISO Images, then create a VM with the ISO attached and its NIC on the LAN bridge in bridge mode, and boot from the CD.
+
+**First boot.** Each node boots into maintenance mode, requests an address over DHCP, and prints its acquired addresses on the console. Record the three addresses. They become `<node-1/2/3>` in step 3, and they should match the `.189`, `.190`, and `.192` reservations.
+
 ## 2. Generate Talos Config
 
 `talosctl gen config` renders per-node machine configs from the patch in `talos/`. `gen secrets` creates the shared cluster credentials (certificate authority and etcd keys). Output lands in the local-only `_talos/` folder. Back that folder up, because it cannot be regenerated identically.
@@ -33,7 +45,7 @@ talosctl gen secrets -o _talos/secrets.yaml \
 
 ## 3. Apply Config and Bootstrap etcd
 
-`apply-config --insecure` pushes the machine config to a fresh node. The insecure flag is only accepted before the node holds credentials. The `--config-patch @talos/nodes/cp-0N.yaml` flag sets that node's hostname. The `bootstrap` command initializes etcd, so run it exactly once on the first node. The remaining nodes join the existing member set.
+`apply-config --insecure` pushes the machine config to a fresh node. The insecure flag is only accepted before the node holds credentials. The `--config-patch @talos/nodes/cp-0N.yaml` flag sets that node's hostname. The `bootstrap` command initializes etcd, so run it exactly once on the first node. The remaining nodes join the existing member set. The `config merge` command imports the generated `talosconfig` into `~/.talos/config`. `config endpoint` records the control-plane endpoints under management, and `config node` records the default targets for node-scoped commands.
 
 Replace `<node-1/2/3>` with `.189`, `.190`, and `.192`. For extra nodes, add a `talos/nodes/cp-0N.yaml` hostname file and append the matching line.
 
