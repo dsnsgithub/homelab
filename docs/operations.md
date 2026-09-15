@@ -66,10 +66,10 @@ State lives in etcd (replicated 3 ways) and intent lives in this repo. The two i
 
 ## Roadmap
 
-- [x] HA Talos, kube-vip service LB, Argo CD Root App, wildcard TLS, Minecraft, V2Ray and web proxy
-- [ ] Immich (`immich.dsns.dev`)
-- [ ] T3 Code (`code.dsns.dev`)
-- [ ] WireGuard VPN
-- [ ] Persistent storage for stateful apps (Longhorn or NFS, still undecided)
-- [ ] Backup restore drill (rebuild from `_talos/` and Git on spare VMs)
-- [ ] Monitoring (kube-prometheus-stack with alerting)
+- [x] HA Talos, kube-vip service LB, Argo CD Root App, wildcard TLS, Minecraft, V2Ray, and the web proxy are deployed.
+- [ ] Immich will serve `immich.dsns.dev`.
+- [ ] T3 Code will serve `code.dsns.dev`.
+- [ ] WireGuard VPN will provide a private tunnel.
+- [ ] Persistent storage for stateful apps is still undecided (Longhorn or NFS).
+- [ ] A backup restore drill will rebuild from `_talos/` and Git on spare VMs.
+- [ ] Monitoring will run kube-prometheus-stack with alerting.

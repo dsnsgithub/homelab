@@ -4,7 +4,7 @@ This repository builds and runs my home Kubernetes cluster: 3 Talos nodes acting
 
 ## How It Works
 
-- **3 Talos nodes, one cluster.** Every node is a control-plane member and schedulable (no dedicated workers). Any single node can fail without taking the cluster down.
+- **Cluster:** three Talos nodes act as one cluster. Every node is a control-plane member and schedulable (no dedicated workers). Any single node can fail without taking the cluster down.
 - **Talos Linux** is the OS on each node. It is minimal and immutable, provides no SSH access, and is managed remotely with `talosctl`.
 - **Argo CD** is the GitOps autopilot. It watches `argocd/apps/` on `main` and converges the cluster to whatever is committed (auto-sync with prune and selfHeal, with a poll interval around 3 minutes).
 - **Traefik** is the ingress controller. It terminates TLS, redirects HTTP to HTTPS, and routes each hostname to the correct Service, including Services that point at other machines on the LAN.
@@ -25,7 +25,7 @@ This repository builds and runs my home Kubernetes cluster: 3 Talos nodes acting
 
 ### Nodes
 
-All control-plane, all schedulable, bridged on `10.3.3.0/24`.
+Every node is a control-plane member, every node is schedulable, and all nodes are bridged on `10.3.3.0/24`.
 
 | Node | Host | IP |
 |------|------|----|
@@ -49,16 +49,16 @@ See [Networking](docs/networking.md) for failover details.
 
 ### Stack
 
-Talos `v1.14.0`, Kubernetes `v1.37.0`, kube-vip `v1.0.4` (ARP failover for Service LB IPs), Traefik (ingress), cert-manager (Let's Encrypt through Cloudflare DNS-01), and Sealed Secrets (encrypted secrets in Git). The full version table is in [Architecture](docs/architecture.md).
+The stack combines Talos `v1.14.0`, Kubernetes `v1.37.0`, kube-vip `v1.0.4` (ARP failover for Service LB IPs), Traefik (ingress), cert-manager (Let's Encrypt through Cloudflare DNS-01), and Sealed Secrets (encrypted secrets in Git). The full version table is in [Architecture](docs/architecture.md).
 
 ### Apps
 
-- [x] Minecraft Velocity and Limbo (`mc.dsns.dev` at `10.3.3.10:25577`)
-- [x] V2Ray VPN (`vray.dsns.dev`)
-- [x] Web proxy (Traefik IngressRoutes at `10.3.3.10:443`)
-- [ ] Immich (`immich.dsns.dev`, planned)
-- [ ] T3 Code (`code.dsns.dev`, planned)
-- [ ] WireGuard VPN (planned)
+- [x] Minecraft Velocity and Limbo is live at `mc.dsns.dev` (`10.3.3.10:25577`).
+- [x] V2Ray VPN is live at `vray.dsns.dev`.
+- [x] The web proxy is live at `10.3.3.10:443` (Traefik IngressRoutes).
+- [ ] Immich is planned for `immich.dsns.dev`.
+- [ ] T3 Code is planned for `code.dsns.dev`.
+- [ ] WireGuard VPN is planned.
 
 See [Applications](docs/applications.md) for details.
 
@@ -68,7 +68,7 @@ Bootstrap is a one-time procedure. Afterwards, every change follows the same loo
 
 ```bash
 git clone https://github.com/dsnsgithub/homelab/ && cd homelab
-# Full bring-up, step by step: docs/bootstrap.md
+# The full bring-up procedure is documented step by step in docs/bootstrap.md
 talosctl kubeconfig -n 10.3.3.8
 kubectl get nodes -A -o wide
 kubectl apply -f argocd/root-app.yaml   # Root App syncs everything else within about 3 minutes
