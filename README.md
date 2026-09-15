@@ -3,7 +3,9 @@
 Kubernetes GitOps repo for my homelab, managed by ArgoCD.
 
 
-<img width="1497" height="1118" alt="homelab" src="https://github.com/user-attachments/assets/753e09ed-d8ef-4cce-a2bc-2b3f5bdeec63" />
+The current architecture is a work in progress and will evolve as I migrate more applications.
+
+<img width="800" alt="homelab" src="https://github.com/user-attachments/assets/753e09ed-d8ef-4cce-a2bc-2b3f5bdeec63" />
 
 ---
 
@@ -12,7 +14,7 @@ kube-vip has been configured to advertise over ARP and if the leader node goes o
 
 This configuration expects a minimum of three control plane nodes for quorum.
 
-## Migration Checklist (currently a work in progress)
+## Migration Checklist
 Applications:
 - [x] Minecraft Proxy + Limbo Server (mc.dsns.dev)
 - [x] Web Proxy
