@@ -5,6 +5,8 @@ Kubernetes GitOps repo for my homelab, managed by ArgoCD.
 
 <img width="1497" height="1118" alt="homelab" src="https://github.com/user-attachments/assets/753e09ed-d8ef-4cce-a2bc-2b3f5bdeec63" />
 
+---
+
 kube-vip will elect a leader node to manage a virtual IP, auto detecting the interface to bind to.
 kube-vip has been configured to advertise over ARP and if the leader node goes offline, a new leader will be elected and sends gratuitous ARP to claim the IP.
 
