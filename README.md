@@ -1,14 +1,12 @@
 # DSNS's Homelab: HA Talos Kubernetes with GitOps
 
-This repository builds and operates my Kubernetes cluster. Three Talos nodes form a single HA cluster, and Argo CD installs and synchronizes everything above the OS.
+This repository builds and operates my Kubernetes cluster. Three Talos nodes form a single HA cluster, and Argo CD installs and synchronizes everything above the OS. The architecture will continue to evolve as more applications migrate.  
 
 ## Architecture
 
 <p align="center">
   <img width="800" alt="Homelab architecture diagram mapping physical hosts to Talos virtual machines to the shared Kubernetes control plane, with Talos and kube-vip virtual IPs facing the public internet" src="https://github.com/user-attachments/assets/753e09ed-d8ef-4cce-a2bc-2b3f5bdeec63" />
 </p>
-
-The diagram maps physical hosts to Talos virtual machines to the shared Kubernetes control plane, with the Talos and kube-vip virtual IPs facing the public internet. The architecture will continue to evolve as more applications migrate. See [Architecture](docs/architecture.md) for the full breakdown.
 
 ## Quickstart
 
@@ -22,6 +20,17 @@ kubectl apply -f argocd/root-app.yaml   # Root App syncs everything else within 
 
 Open the Argo CD UI at `https://10.3.3.9`.
 
+## Applications
+
+| | Service | Address | Status |
+|--|---------|---------|--------|
+| <img src="docs/assets/icons/minecraft.png" width="22" height="22" alt="Minecraft icon"> | Minecraft (Velocity proxy) | `mc.dsns.dev:25565` | Live |
+| <img src="docs/assets/icons/v2ray.png" width="22" height="22" alt="V2Ray icon"> | V2Ray VPN | `vray.dsns.dev` | Live |
+| <img src="docs/assets/icons/seung.ico" width="22" height="22" alt="seung.dev icon"> <img src="docs/assets/icons/mseung.ico" width="22" height="22" alt="mseung.dev icon"> | Web proxy (Traefik) | `*.seung.dev`, `*.mseung.dev` | Live |
+| <img src="docs/assets/icons/immich.ico" width="22" height="22" alt="Immich icon"> | Immich photo library | `immich.dsns.dev` | Planned |
+| <img src="docs/assets/icons/code.ico" width="22" height="22" alt="T3 Code icon"> | T3 Code editor | `code.dsns.dev` | Planned |
+| <img src="docs/assets/icons/wireguard.png" width="22" height="22" alt="WireGuard icon"> | WireGuard VPN | Not publicly available | Planned |
+
 ## Docs
 
 | Page | Contents |
@@ -33,15 +42,4 @@ Open the Argo CD UI at `https://10.3.3.9`.
 | [Applications](docs/applications.md) | Minecraft, V2Ray, web proxy, planned apps |
 | [Operations](docs/operations.md) | Day-to-day GitOps, growing the cluster, troubleshooting, roadmap |
 
-## Apps I Run
 
-| | Service | Address | Status |
-|--|---------|---------|--------|
-| <img src="docs/assets/icons/minecraft.png" width="22" height="22" alt="Minecraft icon"> | Minecraft (Velocity proxy) | `mc.dsns.dev:25565` | Live |
-| <img src="docs/assets/icons/v2ray.png" width="22" height="22" alt="V2Ray icon"> | V2Ray VPN | `vray.dsns.dev` | Live |
-| <img src="docs/assets/icons/seung.ico" width="22" height="22" alt="seung.dev icon"> <img src="docs/assets/icons/mseung.ico" width="22" height="22" alt="mseung.dev icon"> | Web proxy (Traefik) | `*.seung.dev`, `*.mseung.dev` | Live |
-| <img src="docs/assets/icons/immich.ico" width="22" height="22" alt="Immich icon"> | Immich photo library | `immich.dsns.dev` | Planned |
-| <img src="docs/assets/icons/code.ico" width="22" height="22" alt="T3 Code icon"> | T3 Code editor | `code.dsns.dev` | Planned |
-| <img src="docs/assets/icons/wireguard.png" width="22" height="22" alt="WireGuard icon"> | WireGuard VPN | Not publicly available | Planned |
-
-See [Applications](docs/applications.md) for details.
