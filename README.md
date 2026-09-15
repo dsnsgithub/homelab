@@ -45,15 +45,3 @@ Open the Argo CD UI at `https://10.3.3.9`.
 | <img src="docs/assets/icons/wireguard.png" width="22" height="22" alt="WireGuard icon"> | WireGuard VPN | Not publicly available | Planned |
 
 See [Applications](docs/applications.md) for details.
-
-## Layout
-
-```text
-argocd/   # Root App and one Application per component
-infra/    # kube-vip, traefik, cert-manager, argocd-server-lb
-apps/     # minecraft, v2ray, web-proxy
-talos/    # controlplane patch and per-node hostname patches
-docs/     # detailed documentation
-```
-
-Read the documentation in this order: [Architecture](docs/architecture.md), [Hardware](docs/hardware.md), [Networking](docs/networking.md), then [Bootstrap](docs/bootstrap.md).
