@@ -1,0 +1,103 @@
+# WireGuard VPN server. Completely stateless: the ONLY volumes are a Secret
+# (keys/config from Git via Sealed Secrets), and an in-memory emptyDir that
+# holds the rendered wg0.conf for the lifetime of the Pod. No PVCs, no
+# hostPath, no persistent storage of any kind. A rescheduled Pod rebuilds
+# identical runtime state from Git + the SealedSecret.
+#
+# Design notes (read before changing):
+# - replicas MUST stay 1 with strategy Recreate. Two pods would share the
+#   same server private key and 10.13.13.1/24, and UDP has no session
+#   affinity, so peers would roam between conflicting endpoints.
+# - No PEERS/SERVERURL env vars on purpose. The linuxserver image
+#   auto-generates (and regenerates) keys whenever PEERS is set, which is
+#   inherently stateful. Instead the initContainer pre-seeds a deterministic
+#   /config/wg_confs/wg0.conf from the SealedSecret and the image just runs
+#   `wg-quick up` on what it finds. Deleting wg0.conf is never needed.
+# - NET_ADMIN is required to create the wg0 interface and MASQUERADE peer
+#   traffic. SYS_MODULE is intentionally NOT requested: Talos already loads
+#   the WireGuard kernel module (KubeSpan uses it), so modprobe is unneeded.
+# - No pod-level sysctls on purpose. net.ipv4.ip_forward is already 1 on
+#   Talos nodes (the CNI needs it), and the server config sets no FwMark
+#   (default route stays via eth0, so there is no routing loop), which is
+#   what would otherwise require net.ipv4.conf.all.src_valid_mark=1 --
+#   an unsafe sysctl Talos kubelets reject by default.
+# - Outbound peer traffic is MASQUERADEd behind the Pod IP (see PostUp in
+#   the Secret template), so no static routes are needed on the LAN or on
+#   clients for return traffic.
+# - No probes on purpose, matching the other apps in this repo. WireGuard
+#   is UDP with no handshake until the first peer connects, so there is no
+#   meaningful HTTP/TCP probe; `wg show wg0` inside the container is the
+#   manual health check.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wireguard
+  namespace: wireguard-vpn
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: wireguard
+  template:
+    metadata:
+      labels:
+        app: wireguard
+    spec:
+      initContainers:
+      - name: render-config
+        image: busybox:latest
+        command:
+        - sh
+        - -c
+        - |
+          set -eu
+          mkdir -p /config/wg_confs
+          cp /secrets/wg0.conf /config/wg_confs/wg0.conf
+          chmod 600 /config/wg_confs/wg0.conf
+          echo "rendered wg0.conf ($(wc -c < /config/wg_confs/wg0.conf) bytes) into ephemeral /config"
+        volumeMounts:
+        - name: wg-secret
+          mountPath: /secrets
+          readOnly: true
+        - name: config
+          mountPath: /config
+      containers:
+      - name: wireguard
+        image: lscr.io/linuxserver/wireguard:latest
+        env:
+        - name: PUID
+          value: "1000"
+        - name: PGID
+          value: "1000"
+        - name: TZ
+          value: "Etc/UTC"
+        - name: LOG_CONFS
+          value: "false"
+        ports:
+        - containerPort: 51820
+          protocol: UDP
+          name: wireguard
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+      volumes:
+      # Stable identity (server key + peer list). Decrypted by the
+      # Sealed Secrets controller at sync time; never written to disk
+      # outside this Pod's tmpfs.
+      - name: wg-secret
+        secret:
+          secretName: wireguard-config
+          items:
+          - key: wg0.conf
+            path: wg0.conf
+      # Ephemeral runtime config only. Dies with the Pod by design.
+      - name: config
+        emptyDir:
+          medium: Memory
+          sizeLimit: 64Mi

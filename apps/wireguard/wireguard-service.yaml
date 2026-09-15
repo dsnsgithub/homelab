@@ -1,0 +1,22 @@
+# UDP entry point for the WireGuard server. Announced by kube-vip, same
+# mechanism as the Argo CD (.9) and Traefik/Minecraft (.10) services.
+# 10.3.3.11 is a dedicated fourth VIP: keep it outside the DHCP pool,
+# alongside .8 (Kubernetes API), .9, and .10.
+#
+# WAN access requires a one-time UDP 51820 port-forward on the router to
+# 10.3.3.11. On the LAN, peers use 10.3.3.11:51820 directly.
+apiVersion: v1
+kind: Service
+metadata:
+  name: wireguard-service
+  namespace: wireguard-vpn
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 10.3.3.11
+  selector:
+    app: wireguard
+  ports:
+  - name: wireguard
+    protocol: UDP
+    port: 51820
+    targetPort: 51820
