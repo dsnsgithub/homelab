@@ -69,17 +69,18 @@ talos-raider   Ready    control-plane   143m   v1.37.0   10.3.3.192    <none>   
 
 | Hostname | Host hardware | Virtualization | Talos VM allocation | Node IP | Arch | Role |
 |----------|---------------|----------------|---------------------|---------|------|------|
-| `talos-m2` | Mac mini (M2) — _TODO: RAM / disk_ | UTM, bridged networking | _TODO: vCPU / RAM / disk_ | `10.3.3.9` | arm64 | control-plane (schedulable) |
-| `talos-m4` | Mac mini (M4) — _TODO: RAM / disk_ | UTM, bridged networking | _TODO: vCPU / RAM / disk_ | `10.3.3.190` | arm64* | control-plane (schedulable) |
+| `talos-m2` | Mac mini (2023, base model: M2 8-core CPU / 10-core GPU, 8 GB unified memory, 256 GB SSD) + 2 TB SSD backing the VM | UTM, bridged networking | _TODO: vCPU / RAM / disk_ | `10.3.3.9` | arm64 | control-plane (schedulable) |
+| `talos-m4` | Mac mini (2024, base model: M4 10-core CPU / 10-core GPU, 16 GB unified memory, 256 GB SSD) | UTM, bridged networking | _TODO: vCPU / RAM / disk_ | `10.3.3.190` | arm64* | control-plane (schedulable) |
 | `talos-raider` | Raider (Proxmox node, borrowed from separate Proxmox cluster) — _TODO: CPU / RAM / disk_ | Proxmox VE VM, bridged networking | _TODO: vCPU / RAM / disk_ | `10.3.3.192` | amd64 | control-plane (schedulable) |
 
 Notes:
 
 - All three VMs use **bridged networking** so each Talos node gets a first-class LAN IP on `10.3.3.0/24` (required for ARP-based VIP failover).
 - Mixed-architecture cluster (arm64 + amd64) — all deployed images must be multi-arch. Current images (`itzg/mc-proxy`, `v2fly/v2fly-core`, `busybox`, Traefik, cert-manager, kube-vip) all ship multi-arch manifests.
+- `talos-m2` runs its UTM VM off the attached 2 TB SSD (host internal disk is the stock 256 GB SSD).
 - `talos-raider` is borrowed from another Proxmox cluster. If it is reclaimed, etcd loses quorum (2/3 → 1/3 is not quorum). Replace it before decommissioning — see [Day-2 Operations](#day-2-operations).
 
-> **To complete this table, please provide:** host RAM/disk for both Mac minis, vCPU/RAM/disk allocated to each UTM VM, and Raider host specs + Proxmox VM allocation (CPU type, RAM, disk size/type).
+> **Still TODO if you want it filled in:** vCPU/RAM/disk allocated to each UTM VM, and Raider host specs + Proxmox VM allocation (CPU type, RAM, disk size/type).
 
 ---
 
@@ -378,4 +379,4 @@ talosctl config node <node-4>
 
 ---
 
-> **Open inputs needed to finalize:** per-VM vCPU/RAM/disk for `talos-m2`, `talos-m4`, `talos-raider`; host RAM/disk for both Mac minis; Raider host CPU/RAM/disk + whether Talos runs as Proxmox VM or bare metal; DHCP reservations vs static; storage backend choice for Immich/T3 Code.
+> **Open inputs needed to finalize:** per-VM vCPU/RAM/disk for `talos-m2`, `talos-m4`, `talos-raider`; Raider host CPU/RAM/disk; storage backend choice for Immich/T3 Code.
