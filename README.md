@@ -5,10 +5,7 @@ This repository builds and operates my Kubernetes cluster. Argo CD installs/sync
 Anything that isn't colored in the diagram can be changed, as this homelab is platform agnostic. The architecture will continue to evolve as I migrate more applications.
 
 ## Architecture
-
-<p align="center">
-  <img width="800" alt="Homelab architecture diagram mapping physical hosts to Talos virtual machines to the shared Kubernetes control plane, with Talos and kube-vip virtual IPs facing the public internet" src="https://github.com/user-attachments/assets/753e09ed-d8ef-4cce-a2bc-2b3f5bdeec63" />
-</p>
+<img width="800" alt="homelab" src="https://github.com/user-attachments/assets/732cdb09-2110-4e19-ba41-9cf7d6584ffc" />
 
 
 ## Quickstart
