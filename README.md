@@ -17,10 +17,10 @@ This configuration expects a minimum of three control plane nodes for quorum.
 Applications:
 - [x] Minecraft Proxy + Limbo Server (mc.dsns.dev)
 - [x] Web Proxy
-  - [ ] Wireguard VPN
   - [x] V2Ray VPN
   - [ ] Immich
   - [ ] T3 Code
+- [ ] Wireguard VPN
 
 ## Deploy Homelab onto existing Kubernetes cluster
 
