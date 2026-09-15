@@ -2,6 +2,18 @@
 
 This repository builds and operates a home Kubernetes cluster. Three Talos nodes form a single HA cluster, and Argo CD installs and synchronizes everything above the OS. Readers who understand Kubernetes concepts but have not bootstrapped a cluster should start with [Architecture](docs/architecture.md), then follow [Bootstrap](docs/bootstrap.md) to build it.
 
+## Quickstart
+
+Bootstrap is a one-time procedure. Afterwards, every change follows the same loop: edit, push, and Argo CD syncs automatically.
+
+```bash
+git clone https://github.com/dsnsgithub/homelab/ && cd homelab
+# Assumes an existing Talos Kubernetes cluster. For first-time bring-up, see docs/bootstrap.md.
+kubectl apply -f argocd/root-app.yaml   # Root App syncs everything else within about 3 minutes
+```
+
+Open the Argo CD UI at `https://10.3.3.9`.
+
 ## How It Works
 
 - **Cluster:** three Talos nodes form a single HA cluster. Every node is a control-plane member and is schedulable, so the cluster has no dedicated workers. The failure of any single node does not take the cluster down.
@@ -61,18 +73,6 @@ The stack combines Talos `v1.14.0`, Kubernetes `v1.37.0`, kube-vip `v1.0.4` (ARP
 - [ ] WireGuard VPN is planned.
 
 See [Applications](docs/applications.md) for details.
-
-## Quickstart
-
-Bootstrap is a one-time procedure. Afterwards, every change follows the same loop: edit, push, and Argo CD syncs automatically.
-
-```bash
-git clone https://github.com/dsnsgithub/homelab/ && cd homelab
-# Assumes an existing Talos Kubernetes cluster. For first-time bring-up, see docs/bootstrap.md.
-kubectl apply -f argocd/root-app.yaml   # Root App syncs everything else within about 3 minutes
-```
-
-Open the Argo CD UI at `https://10.3.3.9`.
 
 ## Layout
 
