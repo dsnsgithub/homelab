@@ -40,6 +40,7 @@ talosctl gen secrets -o _talos/secrets.yaml --from-controlplane-config _talos/co
 ```
 
 3. Talos Configuration
+
 Replace `<node-1>`, `<node-2>`, and `<node-3>` with the IPs of each node. Feel free to add more than three nodes just by appending more.
 
 ```bash
