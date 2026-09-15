@@ -84,7 +84,7 @@ Argo CD will watch files in `argocd/apps/`, any changes pushed to `main` will be
 ## Additional Talos Information
 
 To update Talos or add new nodes:
-1. Update `controlplane-patch.yml` with new changes.
+1. Update `controlplane-patch.yml` with new changes. If you want a custom name for your new node, add it in `talos/nodes/cp-xx.yaml`.
 
 2. Generate new config
 ```bash
