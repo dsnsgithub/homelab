@@ -46,20 +46,13 @@ talosctl upgrade -n <each-node> --image ghcr.io/siderolabs/installer:vX.Y.Z
 
 ## Repair a Crashlooping etcd Member
 
-Single-member corruption looks like this: `talosctl etcd status -n <node-1>,<node-2>,<node-3>`
+When `talosctl etcd status -n <node-1>,<node-2>,<node-3>`
 returns only 2 of 3 rows, and `talosctl -n <failed-node> logs etcd` loops on
 `service[etcd](Waiting): Error running Containerd(etcd)` with a raft panic:
 
 ```text
 panic: tocommit(120429) is out of range [lastIndex(120421)]. Was the raft log corrupted, truncated, or lost?
 ```
-
-plus `local-member is behind` / `required revision has been compacted`. The node is up but its
-WAL is truncated, so it can never catch the leader. The other two members still hold quorum
-(same `RAFT INDEX`, one `LEADER`, no `ERRORS`), so do not wipe them and do not run
-`talosctl bootstrap` again — that is only for total quorum loss.
-
-Fix the failed member only, one at a time:
 
 ```bash
 # 1. Confirm quorum holds on the healthy nodes (2/3 agree on RAFT INDEX + LEADER).
@@ -89,11 +82,6 @@ kubectl get nodes -o wide
 
 Notes:
 
-* Never take down a second member until the first is green — etcd needs 2 of 3.
-* If `etcd members` shows a stale `PEER URL` (e.g. `https://10.3.3.9:2380` vs client
-  `https://10.3.3.192:2379`) or a `talos-xxx` auto-hostname instead of `talos/nodes/cp-0N.yaml`,
-  fix it the same way after the cluster is healthy. Keep DHCP reservations on the node
-  IPs — peer URLs do not follow DHCP moves.
 * If quorum is already lost (0-1 members respond), this procedure does not apply.
   Follow the full Sidero disaster recovery instead: snapshot via `talosctl cp`,
   wipe `EPHEMERAL` on the down nodes, and `talosctl bootstrap --recover-from`.
