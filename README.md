@@ -3,7 +3,7 @@
 Kubernetes GitOps repo for my homelab, managed by ArgoCD.
 
 
-The current architecture is a work in progress and will evolve as I migrate more applications.
+The current architecture will continue to evolve as I migrate more applications.
 
 <img width="800" alt="homelab" src="https://github.com/user-attachments/assets/753e09ed-d8ef-4cce-a2bc-2b3f5bdeec63" />
 
