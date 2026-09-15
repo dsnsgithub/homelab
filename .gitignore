@@ -1,1 +1,3 @@
 *.plain.yaml
+_talos/
+*-key.yaml
