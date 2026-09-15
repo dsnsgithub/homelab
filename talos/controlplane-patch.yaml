@@ -1,9 +1,4 @@
-# Talos control-plane VIP - replaces kube-vip cp_enable=true from k3s.
-# This file is versioned here to avoid drift. Pass it to talosctl:
 #   talosctl gen config homelab https://10.3.3.8:6443 --config-patch @talos/controlplane-patch.yaml
-# Uses deviceSelector (not interface: eth0) to mimic kube-vip autodetect:
-# all nodes have different NIC names, so we select the single physical NIC.
-# If a node has multiple physical NICs, see talos/node-overrides/README.md.
 machine:
   network:
     interfaces:
@@ -13,18 +8,10 @@ machine:
         vip:
           ip: 10.3.3.8
 ---
-# Talos v1.14+: allowSchedulingOnControlPlanes was removed, scheduling is
-# controlled by KubeNodeConfig taints. 3-node homelab has no workers (k3s
-# scheduled on servers by default) so clear the default NoSchedule taint,
-# otherwise Traefik/minecraft/v2ray stay Pending.
 apiVersion: v1alpha1
 kind: KubeNodeConfig
 taints: {}
 ---
-# UTM VMs use VirtIO disks, which enumerate as /dev/vda (not /dev/sda).
-# Override the install disk selector so provisioning finds the disk.
-# If a node has multiple virtio disks (e.g. cloud-init ISO), see
-# talos/node-overrides/README.md.
 apiVersion: v1alpha1
 kind: UnattendedInstallConfig
 provisioning:
