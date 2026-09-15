@@ -48,23 +48,31 @@ talosctl upgrade -n <each-node> --image ghcr.io/siderolabs/installer:vX.Y.Z
 
 The two irreplaceable local artifacts are `_talos/secrets.yaml` (cluster PKI and credentials) and `talosconfig` (admin access), so keep copies offline. Everything else rebuilds from Git plus the sealed secrets.
 
-## WireGuard VPN
+## WireGuard VPN (wg-easy)
 
-The server in `apps/wireguard/` is completely stateless: no PVCs, no hostPath, nothing on disk. Its identity (server key + peer list) lives in the `wireguard-config` SealedSecret; the initContainer renders `wg0.conf` into an in-memory `emptyDir` at every Pod start. Back up `apps/wireguard/.peers/` (gitignored peer `.conf` files with private keys) offline alongside the Talos artifacts.
+`apps/wireguard/` runs wg-easy (v15): WireGuard plus a web UI for peer management. Unlike the rest of the homelab it is stateful by design — server keys, the SQLite database and peer configs live in the `wgeasy-data` PVC (1Gi via the `local-path` provisioner, data under `/opt/local-path-provisioner` on whichever node holds the volume). Deleting the PVC wipes every peer.
 
-First-time setup (needs `wireguard-tools`, `kubectl`, `kubeseal` on your computer):
-
-```bash
-./apps/wireguard/gen-wireguard-secret.sh --peers laptop,phone --seal
-git add apps/wireguard/wireguard-secret.sealed.yaml && git commit -m "wireguard: seal initial peers" && git push
-# Argo CD syncs within ~3 minutes; verify with:
-kubectl -n wireguard-vpn exec deploy/wireguard -c wireguard -- wg show wg0
-```
-
-Add a peer later by re-running with the FULL list (the existing server key is reused, so current peers keep working):
+First-time setup (needs `kubectl`, `kubeseal` on your computer):
 
 ```bash
-./apps/wireguard/gen-wireguard-secret.sh --peers laptop,phone,tablet --seal
+ADMIN_PASSWORD="$(openssl rand -base64 24)"
+echo "save this somewhere offline: $ADMIN_PASSWORD"
+kubectl create secret generic wgeasy-auth -n wireguard-vpn \
+  --from-literal=admin-password="$ADMIN_PASSWORD" \
+  --dry-run=client -o yaml > apps/wireguard/wireguard-secret.plain.yaml
+kubeseal --format yaml --controller-name sealed-secrets-controller --controller-namespace kube-system \
+  < apps/wireguard/wireguard-secret.plain.yaml > apps/wireguard/wireguard-secret.sealed.yaml
+git add apps/wireguard/wireguard-secret.sealed.yaml && git commit -m "wireguard: seal admin password" && git push
+# Argo CD syncs within ~3 minutes. The INIT_* vars in the Deployment run the
+# onboarding wizard unattended on first boot only; afterwards peers are
+# managed in the UI, and changing INIT_* has no effect unless the PVC is deleted.
 ```
 
-Notes: replicas must stay 1 (two pods would share one server key/IP and UDP has no session affinity); the LoadBalancer VIP is `10.3.3.11`, keep it outside the DHCP pool; WAN access needs a one-time UDP 51820 port-forward on the router to `10.3.3.11`, LAN peers connect to it directly. Client configs default to a split tunnel (VPN + homelab CIDRs only); change `AllowedIPs` to `0.0.0.0/0, ::/0` in the peer `.conf` for a full tunnel.
+Manage peers (UI is ClusterIP-only, not exposed publicly):
+
+```bash
+kubectl -n wireguard-vpn port-forward deploy/wireguard 51821:51821
+# open http://localhost:51821, log in as admin
+```
+
+Notes: replicas must stay 1 (the PVC is ReadWriteOnce and UDP has no session affinity); the LoadBalancer VIP is `10.3.3.11`, keep it outside the DHCP pool; WAN access needs a one-time UDP 51820 port-forward on the router to `10.3.3.11`, LAN peers connect to it directly. Client defaults are a split tunnel (VPN + LAN + pod + service CIDRs) with cluster CoreDNS; per-client full-tunnel and DNS changes happen in the UI. If the tunnel comes up but peers get no traffic, the likely cause is the missing `net.ipv4.conf.all.src_valid_mark=1` sysctl, which Talos kubelets reject by default — allow-list it via the Talos machine config. To expose the UI publicly later, add an ExternalName Service + IngressRoute in `apps/web-proxy` (same pattern as `vray.dsns.dev`) and drop `INSECURE` from the Deployment.

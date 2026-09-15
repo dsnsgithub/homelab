@@ -1,0 +1,28 @@
+# Dynamic local storage for the cluster (used by the wg-easy PVC; also the
+# future answer for Immich and other stateful apps). Sourced straight from
+# the upstream repo at a pinned tag - no vendored copies to keep in sync.
+# The manifest creates its own local-path-storage namespace plus a
+# `local-path` StorageClass (upstream marks it default).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: local-path-provisioner
+  namespace: argocd
+  annotations:
+    # Storage must exist before the wg-easy PVC binds.
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/rancher/local-path-provisioner.git
+    targetRevision: v0.0.37
+    path: deploy
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

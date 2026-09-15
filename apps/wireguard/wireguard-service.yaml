@@ -1,10 +1,12 @@
-# UDP entry point for the WireGuard server. Announced by kube-vip, same
-# mechanism as the Argo CD (.9) and Traefik/Minecraft (.10) services.
-# 10.3.3.11 is a dedicated fourth VIP: keep it outside the DHCP pool,
-# alongside .8 (Kubernetes API), .9, and .10.
+# UDP entry point for WireGuard peers. Announced by kube-vip, same mechanism
+# as the Argo CD (.9) and Traefik/Minecraft (.10) services. 10.3.3.11 is a
+# dedicated fourth VIP: keep it outside the DHCP pool, alongside .8
+# (Kubernetes API), .9, and .10.
 #
 # WAN access requires a one-time UDP 51820 port-forward on the router to
-# 10.3.3.11. On the LAN, peers use 10.3.3.11:51820 directly.
+# 10.3.3.11. On the LAN, peers use 10.3.3.11:51820 directly. If INIT_HOST
+# in the Deployment is changed later (e.g. to a DDNS name), existing client
+# configs keep the old endpoint until re-downloaded from the UI.
 apiVersion: v1
 kind: Service
 metadata:
@@ -20,3 +22,23 @@ spec:
     protocol: UDP
     port: 51820
     targetPort: 51820
+---
+# Web UI. Deliberately ClusterIP (not exposed publicly): reach it via
+#   kubectl -n wireguard-vpn port-forward deploy/wireguard 51821:51821
+# If public HTTPS access is ever wanted, add an ExternalName Service +
+# IngressRoute in apps/web-proxy (same pattern as vray.dsns.dev) and drop
+# INSECURE from the Deployment.
+apiVersion: v1
+kind: Service
+metadata:
+  name: wgeasy-ui
+  namespace: wireguard-vpn
+spec:
+  type: ClusterIP
+  selector:
+    app: wireguard
+  ports:
+  - name: ui
+    protocol: TCP
+    port: 51821
+    targetPort: 51821

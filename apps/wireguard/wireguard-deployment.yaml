@@ -1,33 +1,32 @@
-# WireGuard VPN server. Completely stateless: the ONLY volumes are a Secret
-# (keys/config from Git via Sealed Secrets), and an in-memory emptyDir that
-# holds the rendered wg0.conf for the lifetime of the Pod. No PVCs, no
-# hostPath, no persistent storage of any kind. A rescheduled Pod rebuilds
-# identical runtime state from Git + the SealedSecret.
+# wg-easy (v15) WireGuard server with web UI for peer management.
+#
+# This is intentionally STATEFUL: wg-easy keeps its SQLite database, server
+# keys and peer configs under /etc/wireguard, served here by a 1Gi
+# local-path PVC (see infra via argocd/apps/local-path-provisioner-app.yaml).
+# Peer management happens in the web UI, not in Git.
 #
 # Design notes (read before changing):
-# - replicas MUST stay 1 with strategy Recreate. Two pods would share the
-#   same server private key and 10.13.13.1/24, and UDP has no session
-#   affinity, so peers would roam between conflicting endpoints.
-# - No PEERS/SERVERURL env vars on purpose. The linuxserver image
-#   auto-generates (and regenerates) keys whenever PEERS is set, which is
-#   inherently stateful. Instead the initContainer pre-seeds a deterministic
-#   /config/wg_confs/wg0.conf from the SealedSecret and the image just runs
-#   `wg-quick up` on what it finds. Deleting wg0.conf is never needed.
-# - NET_ADMIN is required to create the wg0 interface and MASQUERADE peer
-#   traffic. SYS_MODULE is intentionally NOT requested: Talos already loads
-#   the WireGuard kernel module (KubeSpan uses it), so modprobe is unneeded.
-# - No pod-level sysctls on purpose. net.ipv4.ip_forward is already 1 on
-#   Talos nodes (the CNI needs it), and the server config sets no FwMark
-#   (default route stays via eth0, so there is no routing loop), which is
-#   what would otherwise require net.ipv4.conf.all.src_valid_mark=1 --
-#   an unsafe sysctl Talos kubelets reject by default.
-# - Outbound peer traffic is MASQUERADEd behind the Pod IP (see PostUp in
-#   the Secret template), so no static routes are needed on the LAN or on
-#   clients for return traffic.
-# - No probes on purpose, matching the other apps in this repo. WireGuard
-#   is UDP with no handshake until the first peer connects, so there is no
-#   meaningful HTTP/TCP probe; `wg show wg0` inside the container is the
-#   manual health check.
+# - replicas MUST stay 1 with strategy Recreate. The PVC is ReadWriteOnce
+#   and two pods would share one server key/IP while UDP has no session
+#   affinity.
+# - v15 removed almost all WG_* env vars. First boot is configured via the
+#   INIT_* vars below (used ONLY on first start against an empty volume);
+#   afterwards everything is managed in the UI. Changing INIT_* later has
+#   no effect unless the PVC is deleted (which wipes all peers).
+# - INSECURE=true because the UI is served over plain HTTP on a ClusterIP
+#   and reached via kubectl port-forward (see docs/operations.md). If the
+#   UI is ever put behind Traefik HTTPS, drop INSECURE.
+# - NET_ADMIN + SYS_MODULE mirror the official wg-easy Kubernetes guide.
+#   SYS_MODULE is belt-and-braces: Talos already loads the WireGuard module
+#   (KubeSpan uses it).
+# - No pod-level sysctls on purpose. The upstream guides set
+#   net.ipv4.conf.all.src_valid_mark=1 / net.ipv4.ip_forward=1, but those
+#   are unsafe sysctls Talos kubelets reject by default (ip_forward is
+#   already 1 on Talos nodes for the CNI). If the tunnel comes up but peers
+#   get no traffic, allow-listing the unsafe sysctls via the Talos machine
+#   config is the first thing to try.
+# - Probes are tcpSocket against the UI port, as in the upstream guide;
+#   WireGuard itself is UDP with no handshake until the first peer connects.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -45,59 +44,64 @@ spec:
       labels:
         app: wireguard
     spec:
-      initContainers:
-      - name: render-config
-        image: busybox:latest
-        command:
-        - sh
-        - -c
-        - |
-          set -eu
-          mkdir -p /config/wg_confs
-          cp /secrets/wg0.conf /config/wg_confs/wg0.conf
-          chmod 600 /config/wg_confs/wg0.conf
-          echo "rendered wg0.conf ($(wc -c < /config/wg_confs/wg0.conf) bytes) into ephemeral /config"
-        volumeMounts:
-        - name: wg-secret
-          mountPath: /secrets
-          readOnly: true
-        - name: config
-          mountPath: /config
       containers:
-      - name: wireguard
-        image: lscr.io/linuxserver/wireguard:latest
+      - name: wg-easy
+        image: ghcr.io/wg-easy/wg-easy:15
         env:
-        - name: PUID
-          value: "1000"
-        - name: PGID
-          value: "1000"
-        - name: TZ
-          value: "Etc/UTC"
-        - name: LOG_CONFS
-          value: "false"
+        - name: INSECURE
+          value: "true"
+        - name: PORT
+          value: "51821"
+        - name: HOST
+          value: "0.0.0.0"
+        # First-boot only (empty volume). See header comment.
+        - name: INIT_ENABLED
+          value: "true"
+        - name: INIT_USERNAME
+          value: "admin"
+        - name: INIT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: wgeasy-auth
+              key: admin-password
+        - name: INIT_HOST
+          value: "10.3.3.11"
+        - name: INIT_PORT
+          value: "51820"
+        - name: INIT_DNS
+          value: "10.96.0.10,1.1.1.1"
+        - name: INIT_IPV4_CIDR
+          value: "10.13.13.0/24"
+        - name: INIT_IPV6_CIDR
+          value: "fd13:13:13::/64"
+        - name: INIT_ALLOWED_IPS
+          value: "10.13.13.0/24,10.3.3.0/24,10.244.0.0/16,10.96.0.0/12"
         ports:
         - containerPort: 51820
           protocol: UDP
           name: wireguard
+        - containerPort: 51821
+          protocol: TCP
+          name: ui
+        readinessProbe:
+          tcpSocket:
+            port: ui
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: ui
+          initialDelaySeconds: 30
+          periodSeconds: 20
         volumeMounts:
-        - name: config
-          mountPath: /config
+        - name: data
+          mountPath: /etc/wireguard
         securityContext:
           capabilities:
             add:
             - NET_ADMIN
+            - SYS_MODULE
       volumes:
-      # Stable identity (server key + peer list). Decrypted by the
-      # Sealed Secrets controller at sync time; never written to disk
-      # outside this Pod's tmpfs.
-      - name: wg-secret
-        secret:
-          secretName: wireguard-config
-          items:
-          - key: wg0.conf
-            path: wg0.conf
-      # Ephemeral runtime config only. Dies with the Pod by design.
-      - name: config
-        emptyDir:
-          medium: Memory
-          sizeLimit: 64Mi
+      - name: data
+        persistentVolumeClaim:
+          claimName: wgeasy-data

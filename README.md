@@ -31,7 +31,7 @@ Open the Argo CD UI at `https://10.3.3.9`.
 | <img src="docs/assets/icons/seung.ico" width="22" height="22" alt="seung.dev icon"> <img src="docs/assets/icons/mseung.ico" width="22" height="22" alt="mseung.dev icon"> | Web proxy (Traefik) | `*.seung.dev`, `*.mseung.dev` | Live |
 | <img src="docs/assets/icons/immich.ico" width="22" height="22" alt="Immich icon"> | Immich | `immich.dsns.dev` | Planned |
 | <img src="docs/assets/icons/code.ico" width="22" height="22" alt="T3 Code icon"> | T3 Code Web | `code.dsns.dev` | Planned |
-| <img src="docs/assets/icons/wireguard.png" width="22" height="22" alt="WireGuard icon"> | WireGuard VPN | `10.3.3.11:51820/udp` (stateless, no volumes) | Live |
+| <img src="docs/assets/icons/wireguard.png" width="22" height="22" alt="WireGuard icon"> | WireGuard VPN (wg-easy) | `10.3.3.11:51820/udp`, UI via `kubectl port-forward` | Live |
 
 ## Docs
 

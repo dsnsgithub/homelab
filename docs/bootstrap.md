@@ -96,7 +96,7 @@ kubectl create secret generic velocity-config -n minecraft \
   --dry-run=client -o yaml | kubeseal -o yaml > apps/minecraft/velocity-secret.sealed.yaml
 ```
 
-The currently sealed inputs are the Cloudflare token (`infra/cert-manager/cloudflare-secret.sealed.yaml`), the Minecraft config (`apps/minecraft/velocity-secret.sealed.yaml`), and the V2Ray config (`apps/v2ray/v2ray-secret.sealed.yaml`). The WireGuard config (`apps/wireguard/wireguard-secret.sealed.yaml`) is sealed separately after bootstrap via `apps/wireguard/gen-wireguard-secret.sh` (see [Operations](operations.md#wireguard-vpn)).
+The currently sealed inputs are the Cloudflare token (`infra/cert-manager/cloudflare-secret.sealed.yaml`), the Minecraft config (`apps/minecraft/velocity-secret.sealed.yaml`), and the V2Ray config (`apps/v2ray/v2ray-secret.sealed.yaml`). The wg-easy admin password (`apps/wireguard/wireguard-secret.sealed.yaml`) is sealed separately after bootstrap (see [Operations](operations.md#wireguard-vpn-wg-easy)).
 
 ## 6. Deploy the Root App
 

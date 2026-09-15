@@ -1,0 +1,17 @@
+# wg-easy state: SQLite database, server keys, peer configs. Bound via the
+# local-path provisioner (argocd/apps/local-path-provisioner-app.yaml),
+# which stores data under /opt/local-path-provisioner on the node holding
+# the volume. Back that path up if peer configs matter: deleting this PVC
+# wipes every peer and forces a fresh onboarding wizard.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wgeasy-data
+  namespace: wireguard-vpn
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
