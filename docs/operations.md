@@ -44,6 +44,60 @@ Upgrade one node at a time and wait for `Ready` between nodes. etcd needs 2 of 3
 talosctl upgrade -n <each-node> --image ghcr.io/siderolabs/installer:vX.Y.Z
 ```
 
+## Repair a Crashlooping etcd Member
+
+Single-member corruption looks like this: `talosctl etcd status -n <node-1>,<node-2>,<node-3>`
+returns only 2 of 3 rows, and `talosctl -n <failed-node> logs etcd` loops on
+`service[etcd](Waiting): Error running Containerd(etcd)` with a raft panic:
+
+```text
+panic: tocommit(120429) is out of range [lastIndex(120421)]. Was the raft log corrupted, truncated, or lost?
+```
+
+plus `local-member is behind` / `required revision has been compacted`. The node is up but its
+WAL is truncated, so it can never catch the leader. The other two members still hold quorum
+(same `RAFT INDEX`, one `LEADER`, no `ERRORS`), so do not wipe them and do not run
+`talosctl bootstrap` again — that is only for total quorum loss.
+
+Fix the failed member only, one at a time:
+
+```bash
+# 1. Confirm quorum holds on the healthy nodes (2/3 agree on RAFT INDEX + LEADER).
+talosctl etcd members -n <healthy-node>
+talosctl etcd status -n <node-1>,<node-2>,<node-3>
+kubectl get nodes -o wide
+
+# 2. Snapshot from a healthy member before touching anything.
+talosctl -n <healthy-node> etcd snapshot db.snapshot
+talosctl -n <healthy-node> etcd alarm list
+
+# 3. Drop the broken member ID (from the `etcd members` output), then wipe
+#    only its etcd data dir. EPHEMERAL is /var/lib/etcd; STATE holds machine
+#    config, so the hostname/identity survives. graceful=false is required
+#    because its etcd cannot leave itself.
+talosctl -n <healthy-node> etcd remove-member <failed-member-id>
+talosctl -n <failed-node> reset --graceful=false --reboot --system-labels-to-wipe=EPHEMERAL
+```
+
+Wait for the reboot, then verify it rejoins via the control-plane endpoint:
+
+```bash
+talosctl -n <node-1>,<node-2>,<node-3> etcd members
+talosctl -n <node-1>,<node-2>,<node-3> etcd status
+kubectl get nodes -o wide
+```
+
+Notes:
+
+* Never take down a second member until the first is green — etcd needs 2 of 3.
+* If `etcd members` shows a stale `PEER URL` (e.g. `https://10.3.3.9:2380` vs client
+  `https://10.3.3.192:2379`) or a `talos-xxx` auto-hostname instead of `talos/nodes/cp-0N.yaml`,
+  fix it the same way after the cluster is healthy. Keep DHCP reservations on the node
+  IPs — peer URLs do not follow DHCP moves.
+* If quorum is already lost (0-1 members respond), this procedure does not apply.
+  Follow the full Sidero disaster recovery instead: snapshot via `talosctl cp`,
+  wipe `EPHEMERAL` on the down nodes, and `talosctl bootstrap --recover-from`.
+
 ## Secrets
 
 The two irreplaceable local artifacts are `_talos/secrets.yaml` (cluster PKI and credentials) and `talosconfig` (admin access), so keep copies offline. Everything else rebuilds from Git plus the sealed secrets.
