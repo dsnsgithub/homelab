@@ -1,8 +1,8 @@
 # DSNS's Homelab: HA Talos Kubernetes with GitOps
 
-This repository builds and operates my Kubernetes cluster, with Argo CD installing and synchronizing everything above the OS. Anything that isn't colored in the diagram can be changed, as this homelab is platform agnostic.
+This repository builds and operates my Kubernetes cluster. Argo CD installs/synchronizes everything above the OS from this repo to the cluster.
 
-The architecture will continue to evolve as I migrate more applications.
+Anything that isn't colored in the diagram can be changed, as this homelab is platform agnostic. The architecture will continue to evolve as I migrate more applications.
 
 ## Architecture
 
