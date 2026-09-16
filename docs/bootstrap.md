@@ -6,7 +6,7 @@
 ```bash
 git clone https://github.com/dsnsgithub/homelab/
 cd homelab
-mise use -g age aqua:postfinance/topf argocd kubectl kubeseal sops talos
+mise install
 ```
 
 If you are rebuilding onto an existing healthy cluster, skip to [step 4](#4-install-argo-cd).
@@ -18,9 +18,9 @@ Visit https://factory.talos.dev and download the ISOs for your platform, adding 
 
 Create the VMs by attaching the matching ISO. If you are using UTM, enable **Apple Virtualization** instead of QEMU to prevent etcd corruption on power loss and use **bridged** networking to give the VMs their own IP.
 
-On boot, each node enters maintenance mode, displaying a DHCP address. Those IPs become `<node-1/2/3>` in step 3.
-
 ## 2. Generate Talos Config
+On boot, each node enters maintenance mode, displaying a DHCP address. 
+
 Edit `talos/topf.yaml` with the IPs of your nodes. Ensure each patch will work with your network configuration.
 
 ```bash
