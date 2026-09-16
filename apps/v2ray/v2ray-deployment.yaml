@@ -14,16 +14,12 @@ spec:
         app: v2ray
     spec:
       initContainers:
-      # v2ray cannot read the client id from the environment, so the final
-      # config.json is rendered from the plaintext template once at startup.
       - name: render-config
         image: busybox:latest
         command:
         - sh
         - -c
         - |
-          # awk rewrites the whole placeholder line with the id passed via -v,
-          # so the value is never interpreted (sed would mangle & or |).
           ID=$(cat /v2ray-id/id)
           awk -v id="$ID" '
             /__V2RAY_ID__/ { print "            \"id\": \"" id "\""; next }

@@ -24,8 +24,6 @@ spec:
       - name: limbo
         image: ghcr.io/quozul/picolimbo:latest
         env:
-        # PicoLimbo expands ${VAR} placeholders in server.toml itself, so the
-        # forwarding secret is injected with no templating step.
         - name: VELOCITY_FORWARDING_SECRET
           valueFrom:
             secretKeyRef:

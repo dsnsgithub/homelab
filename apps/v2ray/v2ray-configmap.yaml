@@ -4,8 +4,6 @@ metadata:
   name: v2ray-config
   namespace: v2ray-vpn
 data:
-  # The v2ray initContainer replaces __V2RAY_ID__ with the content of the
-  # v2ray-id Secret before starting.
   config.json: |
     {
       "dns": {

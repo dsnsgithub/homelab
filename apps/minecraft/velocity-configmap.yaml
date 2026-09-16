@@ -54,9 +54,6 @@ data:
     packets-per-second = -1
     bytes-per-second = -1
     decompressed-bytes-per-second = 5242880
-  # PicoLimbo expands ${...} placeholders in server.toml itself, using the
-  # VELOCITY_FORWARDING_SECRET env var (wired to the sealed Secret in
-  # limbo-deployment.yaml), so the secret is never stored in this file.
   server.toml: |
     welcome_message = "Type /server [name] to move between servers!"
     action_bar = "Welcome to mc.dsns.dev!"
