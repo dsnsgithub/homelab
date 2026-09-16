@@ -56,13 +56,3 @@ talosctl -n <node-1>,<node-2>,<node-3> etcd members
 talosctl -n <node-1>,<node-2>,<node-3> etcd status
 kubectl get nodes -o wide
 ```
-
-Notes:
-
-* If quorum is already lost, this procedure does not apply.
-  Follow the full Sidero disaster recovery instead: snapshot via `talosctl cp`,
-  wipe `EPHEMERAL` on the down nodes, and `talosctl bootstrap --recover-from`.
-
-## Secrets
-
-The two irreplaceable local artifacts are `_talos/secrets.yaml` (cluster PKI and credentials) and `talosconfig` (admin access), so keep copies offline. Everything else rebuilds from Git plus the sealed secrets.
