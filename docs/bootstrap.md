@@ -25,12 +25,22 @@ Edit `talos/topf.yaml` with the IPs of your nodes. Ensure each patch will work w
 
 ```bash
 topf --topfconfig talos/topf.yaml apply --auto-bootstrap
-topf kubeconfig
-topf talosconfig
 
 age-keygen -o ~/.config/sops/age/keys.txt
 # put public key in .sops.yaml
 sops -e -i talos/secrets.yaml
+```
+
+If decrypting from current repo:
+- Add your age public key to .sops.yaml, commit
+- Encrypt the credentials with your public key on a computer with access: `sops updatekeys talos/secrets.yaml`
+
+```bash
+mkdir -p ~/.kube
+topf --topfconfig talos/topf.yaml kubeconfig > ~/.kube/config
+
+mkdir -p ~/.talos
+topf --topfconfig talos/topf.yaml talosconfig > ~/.talos/config
 ```
 
 ## 3. Install Argo CD
