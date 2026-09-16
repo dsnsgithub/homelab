@@ -48,6 +48,57 @@ talosctl config node <node-1> <node-2> <node-3> <node-4>
 
 3. Verify membership and consensus with `talosctl etcd status` and `kubectl get nodes`.
 
+## Remove a Node
+
+1. Identify the target and confirm the cluster is healthy:
+
+```bash
+kubectl get nodes -o wide
+talosctl -n <node-1>,<node-2>,<node-3> etcd members
+talosctl etcd status -n <node-1>,<node-2>,<node-3>
+```
+
+2. Gracefully reset the departing node. This cordons/drains it, makes it
+leave etcd, wipes its disks, and powers it down:
+
+```bash
+talosctl -n <node-4> reset
+```
+
+Add `--reboot` instead of powering off if you are wiping the machine for
+immediate reuse (it returns to maintenance mode).
+
+3. Remove the Kubernetes Node object:
+
+```bash
+kubectl delete node <node-4-name>
+```
+
+4. Remove the node from version control and your local `talosctl` context:
+
+```bash
+talosctl config endpoint <node-1> <node-2> <node-3>
+talosctl config node <node-1> <node-2> <node-3>
+```
+
+5. Verify etcd and Kubernetes agree on membership:
+
+```bash
+talosctl -n <node-1>,<node-2>,<node-3> etcd members
+talosctl etcd status -n <node-1>,<node-2>,<node-3>
+kubectl get nodes -o wide
+```
+
+If the node is already dead and `reset` cannot reach it, force-remove its
+etcd member from a healthy node and then delete the Node object, as shown in
+[Repair a Crashlooping etcd Member](#repair-a-crashlooping-etcd-member):
+
+```bash
+talosctl etcd members -n <healthy-node>
+talosctl -n <healthy-node> etcd remove-member <failed-member-id>
+kubectl delete node <failed-node-name>
+```
+
 ## Upgrade Talos and Kubernetes
 
 Upgrade one node at a time and wait for `Ready` between nodes. etcd needs 2 of 3 members online, so upgrading two nodes at once would stall writes:
