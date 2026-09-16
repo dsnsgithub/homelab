@@ -13,7 +13,13 @@ Normal changes follow this loop, and no manual install commands are needed:
 
 ## Regenerate Talos Config
 
-After editing `talos/controlplane-patch.yaml`, re-render the configs from the saved master keys in `_talos/secrets.yaml`:
+Pushes to `main` that touch `talos/` roll out automatically via the
+`talos-gitops` workflow (self-hosted runner, one node at a time with etcd
+checks). See [Talos GitOps](talos-gitops.md) for runner and secret setup.
+Just edit `talos/controlplane-patch.yaml` or `talos/nodes/cp-0N.yaml` (+ the
+matching `talos/nodes.yaml` entry), merge, and watch Actions.
+
+Manual equivalent (same commands the workflow runs) for air-gapped fixes:
 
 ```bash
 talosctl gen config homelab https://10.3.3.8:6443 \
