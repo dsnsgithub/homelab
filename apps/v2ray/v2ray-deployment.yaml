@@ -16,15 +16,7 @@ spec:
       initContainers:
       - name: render-config
         image: busybox:latest
-        command:
-        - sh
-        - -c
-        - |
-          ID=$(cat /v2ray-id/id)
-          awk -v id="$ID" '
-            /__V2RAY_ID__/ { print "            \"id\": \"" id "\""; next }
-            { print }
-          ' /config-template/config.json > /rendered-config/config.json
+        command: ['sh', '-c', 'ID=$(cat /v2ray-id/id); sed "s/__V2RAY_ID__/${ID}/g" /config-template/config.json > /rendered-config/config.json']
         volumeMounts:
         - name: v2ray-config
           mountPath: /rendered-config
