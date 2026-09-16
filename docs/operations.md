@@ -62,24 +62,10 @@ When `talosctl etcd status -n <node-1>,<node-2>,<node-3>`
 returns only 2 of 3 rows, and `talosctl -n <failed-node> logs etcd` loops on
 `service[etcd](Waiting): Error running Containerd(etcd)` with a raft panic:
 
-```text
-panic: tocommit(120429) is out of range [lastIndex(120421)]. Was the raft log corrupted, truncated, or lost?
-```
-
 ```bash
-# 1. Confirm quorum holds on the healthy nodes (2/3 agree on RAFT INDEX + LEADER).
 talosctl etcd members -n <healthy-node>
 talosctl etcd status -n <node-1>,<node-2>,<node-3>
-kubectl get nodes -o wide
 
-# 2. Snapshot from a healthy member before touching anything.
-talosctl -n <healthy-node> etcd snapshot db.snapshot
-talosctl -n <healthy-node> etcd alarm list
-
-# 3. Drop the broken member ID (from the `etcd members` output), then wipe
-#    only its etcd data dir. EPHEMERAL is /var/lib/etcd; STATE holds machine
-#    config, so the hostname/identity survives. graceful=false is required
-#    because its etcd cannot leave itself.
 talosctl -n <healthy-node> etcd remove-member <failed-member-id>
 talosctl -n <failed-node> reset --graceful=false --reboot --system-labels-to-wipe=EPHEMERAL
 ```
@@ -94,7 +80,7 @@ kubectl get nodes -o wide
 
 Notes:
 
-* If quorum is already lost (0-1 members respond), this procedure does not apply.
+* If quorum is already lost, this procedure does not apply.
   Follow the full Sidero disaster recovery instead: snapshot via `talosctl cp`,
   wipe `EPHEMERAL` on the down nodes, and `talosctl bootstrap --recover-from`.
 
