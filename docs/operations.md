@@ -50,10 +50,6 @@ talosctl config node <node-1> <node-2> <node-3> <node-4>
 
 ## Remove a Node
 
-Do not scale below 3 control-plane nodes: etcd needs a quorum majority
-(2 of 3) to accept writes, so keep an odd count. To decommission
-`<node-4>` (Kubernetes name e.g. `talos-xxx`):
-
 1. Identify the target and confirm the cluster is healthy:
 
 ```bash
@@ -81,7 +77,6 @@ kubectl delete node <node-4-name>
 4. Remove the node from version control and your local `talosctl` context:
 
 ```bash
-# Delete e.g. talos/nodes/cp-04.yaml, commit, and push.
 talosctl config endpoint <node-1> <node-2> <node-3>
 talosctl config node <node-1> <node-2> <node-3>
 ```
