@@ -1,4 +1,3 @@
-#   talosctl gen config homelab https://10.3.3.8:6443 --config-patch @talos/controlplane-patch.yaml
 machine:
   network:
     interfaces:
