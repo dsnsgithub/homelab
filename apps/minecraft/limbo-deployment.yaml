@@ -23,6 +23,12 @@ spec:
       containers:
       - name: limbo
         image: ghcr.io/quozul/picolimbo:latest
+        env:
+        - name: VELOCITY_FORWARDING_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: velocity-forwarding-secret
+              key: forwarding.secret
         volumeMounts:
         - name: limbo-config
           mountPath: /usr/src/app/server.toml
@@ -34,8 +40,8 @@ spec:
         tty: true
       volumes:
       - name: limbo-config
-        secret:
-          secretName: velocity-config
+        configMap:
+          name: velocity-config
           items:
           - key: server.toml
             path: server.toml
