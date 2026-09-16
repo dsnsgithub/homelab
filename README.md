@@ -36,4 +36,5 @@ In addition to kube-vip, all stateless applications (proxies, VPNs) are replicat
 
 | Page | Contents |
 |------|----------|
+| [Bootstrap](docs/bootstrap.md) | Prerequisites and first-time Talos to Argo CD bring-up |
 | [Operations](docs/operations.md) | Day-to-day GitOps, growing the cluster, secrets |
