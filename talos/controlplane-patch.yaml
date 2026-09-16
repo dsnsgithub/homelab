@@ -9,8 +9,6 @@ machine:
           ip: 10.3.3.8
 cluster:
   etcd:
-    # Keep initial-advertise-peer-urls / advertise-client-urls off the VIPs.
-    # listenSubnets defaults to advertisedSubnets.
     advertisedSubnets:
       - 10.3.3.0/24
       - '!10.3.3.8/32'
@@ -19,10 +17,6 @@ cluster:
 ---
 apiVersion: v1alpha1
 kind: KubeNodeConfig
-# Pin kubelet --node-ip to the real DHCP address. Without this the VIP
-# (.8) or a kube-vip LB IP (.9/.10) that happens to be on the interface
-# can be picked as INTERNAL-IP in `kubectl get nodes -o wide`.
-# (v1.14: nodeIP lives on KubeNodeConfig; machine.kubelet.nodeIP is deprecated.)
 nodeIP:
   validSubnets:
     - 10.3.3.0/24
