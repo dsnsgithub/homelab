@@ -3,6 +3,11 @@ kind: Deployment
 metadata:
   name: mc-proxy-a
   namespace: minecraft
+  annotations:
+    # Roll A fully before B starts (B is wave 2): ArgoCD waits for this
+    # Deployment to be Healthy before proceeding, so A's preStop transfer
+    # always lands on a stable B and the two never drain into each other.
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   replicas: 1
   strategy:
