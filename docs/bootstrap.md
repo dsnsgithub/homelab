@@ -49,16 +49,9 @@ The controller decrypts `SealedSecret` objects into regular Secrets at sync time
 kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/latest/download/controller.yaml
 ```
 
-For every `*.TEMPLATE.yaml` file, build the plain Secret locally, seal it, and commit only the sealed output. The following example seals the Minecraft config:
+For every `*.TEMPLATE.yaml` file, build the plain Secret locally, seal it, and commit only the sealed output. Each `*.TEMPLATE.yaml` documents its own sealing command. Only genuinely secret values are sealed: app configs live in plaintext `ConfigMaps` next to them, and the secret is wired in at startup (an initContainer renders V2Ray's `config.json`; Limbo and Velocity consume the forwarding secret natively via env/file).
 
-```bash
-kubectl create secret generic velocity-config -n minecraft \
-  --from-file=velocity.toml=./velocity.toml \
-  --from-file=forwarding.secret=./forwarding.secret \
-  --dry-run=client -o yaml | kubeseal -o yaml > apps/minecraft/velocity-secret.sealed.yaml
-```
-
-The currently sealed inputs are the Cloudflare token (`infra/cert-manager/cloudflare-secret.sealed.yaml`), the Minecraft config (`apps/minecraft/velocity-secret.sealed.yaml`), and the V2Ray config (`apps/v2ray/v2ray-secret.sealed.yaml`).
+The currently sealed inputs are the Cloudflare token (`infra/cert-manager/cloudflare-secret.sealed.yaml`), the Minecraft forwarding secret (`apps/minecraft/velocity-secret.sealed.yaml`), and the V2Ray client ID (`apps/v2ray/v2ray-secret.sealed.yaml`).
 
 ## 5. Deploy the Root App
 
