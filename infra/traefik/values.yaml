@@ -1,6 +1,10 @@
 deployment:
   replicas: 2
 
+providers:
+  kubernetesCRD:
+    allowExternalNameServices: true
+
 service:
   spec:
     loadBalancerIP: "10.3.3.10"
