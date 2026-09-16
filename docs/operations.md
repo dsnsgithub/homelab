@@ -51,10 +51,8 @@ talosctl etcd status -n <node-1>,<node-2>,<node-3>
 
 ```bash
 kubectl cordon <node-name>
-kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data --timeout=300s
+kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
 ```
-
-`--ignore-daemonsets` skips DaemonSet pods (recreated by their controller) and `--delete-emptydir-data` acknowledges `emptyDir` data loss. The drain respects PodDisruptionBudgets and will hang if a budget blocks eviction — fix the workload, don't force it unless you accept downtime.
 
 3. Perform the maintenance, e.g.:
 
