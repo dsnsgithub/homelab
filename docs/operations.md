@@ -19,7 +19,14 @@ After editing `talos/controlplane-patch.yaml`, re-render the configs from the sa
 talosctl gen config homelab https://10.3.3.8:6443 \
   --with-secrets _talos/secrets.yaml \
   --config-patch-control-plane @talos/controlplane-patch.yaml \
-  --output-dir _talos
+  --output-dir _talos --force
+
+talosctl apply-config --insecure -n <node-1> \
+  --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-01.yaml
+talosctl apply-config --insecure -n <node-2> \
+  --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-02.yaml
+talosctl apply-config --insecure -n <node-3> \
+  --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-03.yaml
 ```
 
 ## Add a Node
