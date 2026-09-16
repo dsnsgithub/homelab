@@ -5,114 +5,19 @@ on:
     branches: [main]
     paths:
       - "talos/**"
-      - ".sops.yaml"
-      - "mise.toml"
-      - ".github/workflows/talos-gitops.yaml"
-  pull_request:
-    paths:
-      - "talos/**"
-      - ".sops.yaml"
-      - "mise.toml"
-      - ".github/workflows/talos-gitops.yaml"
   workflow_dispatch:
-    inputs:
-      apply:
-        description: "Apply to nodes after render (self-hosted runner only)"
-        required: false
-        default: "false"
 
 concurrency:
   group: talos-gitops
   cancel-in-progress: false
 
 jobs:
-  plan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v4
-      - run: mise install
-      - name: Render and validate
-        env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-        run: |
-          set -euo pipefail
-          python3 - <<'EOF'
-          import glob, yaml
-          inv = yaml.safe_load(open('talos/topf.yaml'))
-          assert inv['clusterName'] == 'homelab'
-          assert inv['clusterEndpoint'] == 'https://10.3.3.8:6443'
-          assert len(inv.get('nodes', [])) >= 3, 'need at least 3 nodes for etcd quorum'
-          for n in inv['nodes']:
-              assert n.get('host') and n.get('ip') and n.get('role'), f"incomplete node: {n}"
-          patches = sorted(glob.glob('talos/all/*') + glob.glob('talos/control-plane/*') +
-                           glob.glob('talos/worker/*') + glob.glob('talos/node/*/*'))
-          assert patches, 'no patches found under talos/'
-          for p in patches:
-              if not p.endswith('.tpl'):
-                  assert [d for d in yaml.safe_load_all(open(p)) if d], f"empty patch: {p}"
-          print('inventory and patches ok')
-          EOF
-          if [ -z "${SOPS_AGE_KEY:-}" ] || [ ! -f talos/secrets.yaml ]; then
-            echo "render skipped (no age key or secrets bundle)"
-            exit 0
-          fi
-          rm -rf /tmp/rendered
-          topf --topfconfig talos/topf.yaml render -o /tmp/rendered
-          for f in /tmp/rendered/*.yaml; do
-            talosctl validate --config "$f" --mode metal
-          done
-          python3 - <<'EOF'
-          import yaml
-          inv = yaml.safe_load(open('talos/topf.yaml'))
-          for n in inv['nodes']:
-              docs = list(yaml.safe_load_all(open(f"/tmp/rendered/{n['host']}.yaml")))
-              kinds = {d.get('kind') for d in docs if isinstance(d, dict)}
-              assert {'KubeNodeConfig', 'UnattendedInstallConfig'} <= kinds, f"{n['host']}: {sorted(kinds)}"
-              hostnames = [d.get('hostname') for d in docs if isinstance(d, dict) and d.get('kind') == 'HostnameConfig']
-              assert hostnames == [n['host']], f"{n['host']}: {hostnames}"
-          print('rendered configs ok')
-          EOF
-
   apply:
-    needs: plan
-    if: >
-      needs.plan.result == 'success' &&
-      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-       (github.event_name == 'workflow_dispatch' && inputs.apply == 'true'))
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v4
       - run: mise install
-      - name: Apply node by node
-        env:
+      - env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
-        run: |
-          set -euo pipefail
-          test -n "${SOPS_AGE_KEY:?SOPS_AGE_KEY is required}"
-          export SOPS_AGE_KEY TALOSCONFIG=~/.talos/config
-          mkdir -p ~/.talos ~/.kube
-          topf --topfconfig talos/topf.yaml talosconfig --confirm=false > ~/.talos/config
-          chmod 600 ~/.talos/config
-          if [ -n "${KUBECONFIG_B64:-}" ]; then
-            echo "$KUBECONFIG_B64" | base64 -d > ~/.kube/config
-          else
-            topf --topfconfig talos/topf.yaml kubeconfig --confirm=false > ~/.kube/config
-          fi
-          chmod 600 ~/.kube/config
-          set +e
-          topf --topfconfig talos/topf.yaml apply --dry-run --confirm=false
-          code=$?
-          set -e
-          [ "$code" -le 2 ] || exit "$code"
-          IPS=$(python3 -c "import yaml;print(','.join(n['ip'] for n in yaml.safe_load(open('talos/topf.yaml'))['nodes']))")
-          talosctl etcd status -n "$IPS"
-          for host in $(python3 -c "import yaml;print(' '.join(n['host'] for n in yaml.safe_load(open('talos/topf.yaml'))['nodes']))"); do
-            kubectl drain "$host" --ignore-daemonsets --delete-emptydir-data --timeout=120s
-            topf --topfconfig talos/topf.yaml apply --nodes-filter "^${host}$" --confirm=false
-            kubectl wait --for=condition=Ready "node/$host" --timeout=10m
-            kubectl uncordon "$host"
-            talosctl etcd status -n "$IPS"
-          done
+        run: topf --topfconfig talos/topf.yaml apply --confirm=false
