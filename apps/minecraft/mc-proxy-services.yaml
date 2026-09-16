@@ -1,0 +1,64 @@
+# Governing headless service for the StatefulSet identity (required as
+# spec.serviceName; not client-facing).
+apiVersion: v1
+kind: Service
+metadata:
+  name: mc-proxy
+  namespace: minecraft
+spec:
+  clusterIP: None
+  selector:
+    app: mc-proxy
+  ports:
+  - name: velocity
+    port: 25577
+    targetPort: 25577
+---
+# Dedicated entrypoint for pod mc-proxy-0. externalTrafficPolicy: Local makes
+# kube-vip only announce 10.3.3.11 from the node actually running that pod
+# (requires svc_election=true, already set in infra/kube-vip), so draining
+# that node moves pod and VIP together while pod 1 + VIP .12 stay untouched.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mc-proxy-0
+  namespace: minecraft
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 10.3.3.11
+  externalTrafficPolicy: Local
+  selector:
+    app: mc-proxy
+    statefulset.kubernetes.io/pod-name: mc-proxy-0
+  ports:
+  - name: minecraft
+    port: 25565
+    targetPort: 25577
+  - name: voice-chat
+    port: 25577
+    protocol: UDP
+    targetPort: 25577
+---
+# Dedicated entrypoint for pod mc-proxy-1. Router must forward a second public
+# port, e.g. WAN:25566 -> 10.3.3.12:25565, which is the preStop transfer target
+# of pod 0.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mc-proxy-1
+  namespace: minecraft
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 10.3.3.12
+  externalTrafficPolicy: Local
+  selector:
+    app: mc-proxy
+    statefulset.kubernetes.io/pod-name: mc-proxy-1
+  ports:
+  - name: minecraft
+    port: 25565
+    targetPort: 25577
+  - name: voice-chat
+    port: 25577
+    protocol: UDP
+    targetPort: 25577

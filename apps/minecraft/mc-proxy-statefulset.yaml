@@ -1,27 +1,27 @@
+# Single manifest for both proxies. Ordinal 0/1 gives each pod a stable
+# identity (mc-proxy-0/1), so per-pod Services can pin VIP .11/.12 and the
+# preStop hook can compute its peer from $HOSTNAME. Edit once, both get it.
+#
+# Bonus over two Deployments: StatefulSet rolls pods one at a time in order,
+# so config/image updates serialize for free (no sync-wave annotations) and
+# need no surge capacity beyond the two nodes.
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: mc-proxy-b
+  name: mc-proxy
   namespace: minecraft
-  annotations:
-    # Roll after A (wave 1): B's preStop transfer then lands on the new A.
-    argocd.argoproj.io/sync-wave: "2"
 spec:
-  replicas: 1
-  strategy:
+  serviceName: mc-proxy
+  replicas: 2
+  updateStrategy:
     type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
   selector:
     matchLabels:
       app: mc-proxy
-      proxy: b
   template:
     metadata:
       labels:
         app: mc-proxy
-        proxy: b
     spec:
       # Never co-locate the two proxies: draining one node must leave the peer alive.
       affinity:
@@ -67,11 +67,12 @@ spec:
               # Allows rollout before you reseal the secret with the new key;
               # transfer just degrades until the reseal (see TEMPLATE comment).
               optional: true
-        # Stable peer entrypoint (mirror of mc-proxy-a). See notes there.
+        # Stable peer entrypoint host. Port is derived from the pod ordinal in
+        # preStop below. Must be reachable by every client (LAN + WAN).
+        # Assumes mc.dsns.dev resolves internally and externally, with router
+        # forwards WAN:25565 -> 10.3.3.11:25565 and WAN:25566 -> 10.3.3.12:25565.
         - name: PEER_HOST
           value: "mc.dsns.dev"
-        - name: PEER_PORT
-          value: "25565"
         ports:
         - containerPort: 25577
           name: velocity
@@ -94,7 +95,11 @@ spec:
         lifecycle:
           preStop:
             exec:
-              command: ['sh', '-c', 'rcon-cli transfer "$PEER_HOST:$PEER_PORT" all || true; sleep 20']
+              # Move every player to the surviving proxy via the Transfer packet
+              # (1.20.5+ clients see a loading screen, no manual rejoin), then
+              # hold the pod so clients finish the new handshake before SIGTERM.
+              # `|| true` keeps termination moving when RCON has no players to move.
+              command: ['sh', '-c', 'ORD="${HOSTNAME##*-}"; if [ "$ORD" = "0" ]; then PEER_PORT=25566; else PEER_PORT=25565; fi; rcon-cli transfer "$PEER_HOST:$PEER_PORT" all || true; sleep 20']
       volumes:
       - name: server-data
         emptyDir: {}
