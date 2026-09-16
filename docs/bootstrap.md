@@ -24,9 +24,13 @@ On boot, each node enters maintenance mode, displaying a DHCP address.
 Edit `talos/topf.yaml` with the IPs of your nodes. Ensure each patch will work with your network configuration.
 
 ```bash
-topf apply --auto-bootstrap
+topf --topfconfig talos/topf.yaml apply --auto-bootstrap
 topf kubeconfig
 topf talosconfig
+
+age-keygen -o ~/.config/sops/age/keys.txt
+# put public key in .sops.yaml
+sops -e -i talos/secrets.yaml
 ```
 
 ## 3. Install Argo CD
