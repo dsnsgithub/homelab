@@ -54,8 +54,9 @@ data:
     packets-per-second = -1
     bytes-per-second = -1
     decompressed-bytes-per-second = 5242880
-  # The limbo initContainer replaces __VELOCITY_FORWARDING_SECRET__ with the
-  # content of the velocity-forwarding-secret Secret before starting.
+  # PicoLimbo expands ${...} placeholders in server.toml itself, using the
+  # VELOCITY_FORWARDING_SECRET env var (wired to the sealed Secret in
+  # limbo-deployment.yaml), so the secret is never stored in this file.
   server.toml: |
     welcome_message = "Type /server [name] to move between servers!"
     action_bar = "Welcome to mc.dsns.dev!"
@@ -64,7 +65,7 @@ data:
 
     [forwarding]
     method = "MODERN"
-    secret = "__VELOCITY_FORWARDING_SECRET__"
+    secret = "${VELOCITY_FORWARDING_SECRET}"
 
     [tab_list]
     enabled = false

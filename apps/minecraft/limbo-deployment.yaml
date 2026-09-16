@@ -20,22 +20,17 @@ spec:
         volumeMounts:
         - name: limbo-data
           mountPath: /data
-      # Inject the forwarding secret into the plaintext server.toml template.
-      # awk rewrites the whole placeholder line so the secret is never
-      # interpreted (sed substitution would mangle secrets containing & or |).
-      - name: render-server-config
-        image: busybox:latest
-        command: ['sh', '-c', 'SECRET=$(cat /forwarding-secret/forwarding.secret); awk -v secret="$SECRET" "{if (/__VELOCITY_FORWARDING_SECRET__/) print \"secret = \\\"\" secret \"\\\"\"; else print}" /config-template/server.toml > /rendered-config/server.toml']
-        volumeMounts:
-        - name: limbo-config
-          mountPath: /rendered-config
-        - name: velocity-config-template
-          mountPath: /config-template
-        - name: forwarding-secret
-          mountPath: /forwarding-secret
       containers:
       - name: limbo
         image: ghcr.io/quozul/picolimbo:latest
+        env:
+        # PicoLimbo expands ${VAR} placeholders in server.toml itself, so the
+        # forwarding secret is injected with no templating step.
+        - name: VELOCITY_FORWARDING_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: velocity-forwarding-secret
+              key: forwarding.secret
         volumeMounts:
         - name: limbo-config
           mountPath: /usr/src/app/server.toml
@@ -47,18 +42,10 @@ spec:
         tty: true
       volumes:
       - name: limbo-config
-        emptyDir: {}
-      - name: velocity-config-template
         configMap:
           name: velocity-config
           items:
           - key: server.toml
             path: server.toml
-      - name: forwarding-secret
-        secret:
-          secretName: velocity-forwarding-secret
-          items:
-          - key: forwarding.secret
-            path: forwarding.secret
       - name: limbo-data
         emptyDir: {}

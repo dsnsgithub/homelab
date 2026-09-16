@@ -14,12 +14,21 @@ spec:
         app: v2ray
     spec:
       initContainers:
-      # Inject the client id into the plaintext config.json template. awk
-      # rewrites the whole placeholder line so the id is never interpreted
-      # (sed substitution would mangle values containing & or |).
+      # v2ray cannot read the client id from the environment, so the final
+      # config.json is rendered from the plaintext template once at startup.
       - name: render-config
         image: busybox:latest
-        command: ['sh', '-c', 'ID=$(cat /v2ray-id/id); awk -v id="$ID" "{if (/__V2RAY_ID__/) print \"            \\\"id\\\": \\\"\" id \"\\\"\"; else print}" /config-template/config.json > /rendered-config/config.json']
+        command:
+        - sh
+        - -c
+        - |
+          # awk rewrites the whole placeholder line with the id passed via -v,
+          # so the value is never interpreted (sed would mangle & or |).
+          ID=$(cat /v2ray-id/id)
+          awk -v id="$ID" '
+            /__V2RAY_ID__/ { print "            \"id\": \"" id "\""; next }
+            { print }
+          ' /config-template/config.json > /rendered-config/config.json
         volumeMounts:
         - name: v2ray-config
           mountPath: /rendered-config
