@@ -1,0 +1,17 @@
+# HA VIP (.8) and etcd peer subnets for all control-plane nodes.
+machine:
+  network:
+    interfaces:
+      - deviceSelector:
+          physical: true
+        dhcp: true
+        vip:
+          ip: 10.3.3.8
+cluster:
+  etcd:
+    advertisedSubnets:
+      - 10.3.3.0/24
+      - '!10.3.3.8/32'
+      - '!10.3.3.9/32'
+      - '!10.3.3.10/32'
+      - '!10.3.3.11/32'

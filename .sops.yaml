@@ -1,0 +1,7 @@
+# SOPS age rule for the Talos secrets bundle. Replace the placeholder with
+# your own age public key (generate with `age-keygen -o ~/.config/sops/age/keys.txt`),
+# then re-encrypt: `sops updatekeys talos/secrets.yaml`.
+# The matching private key goes to GitHub Actions as SOPS_AGE_KEY (and offline backup).
+creation_rules:
+  - path_regex: talos/secrets\.yaml$
+    age: age1REPLACEWITHYOUROWNAGEPUBLICKEY

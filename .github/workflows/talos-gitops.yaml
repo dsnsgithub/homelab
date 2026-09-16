@@ -1,15 +1,18 @@
-# Talos GitOps: render on every PR/push touching talos/, auto-apply on main.
+# Talos GitOps via TOPF: render on every PR/push touching talos/, auto-apply on main.
 #
 # Architecture: Talos machine config lives outside the Kubernetes API
 # (Talos API :50000), so Argo CD cannot apply it. Instead a LAN-reachable
-# self-hosted runner applies it with talosctl, one node at a time.
+# self-hosted runner applies it with `topf apply`, one node at a time.
+# TOPF (PostFinance, Talos v1.14-native) composes versioned multi-doc
+# patches from talos/ — the community-standard successor to talhelper,
+# which cannot parse this cluster's KubeNodeConfig/UnattendedInstallConfig
+# documents (see docs/talos-gitops.md).
 #
 # Required GitHub Actions secrets (Settings > Secrets and variables > Actions):
-#   TALOS_SECRETS_YAML_B64  base64 -w0 _talos/secrets.yaml   (cluster PKI, irreplaceable)
-#   TALOSCONFIG_B64         base64 -w0 _talos/talosconfig    (admin access)
-#   KUBECONFIG_B64          base64 -w0 ~/.kube/config        (optional; else fetched via talosctl)
+#   SOPS_AGE_KEY    age private key that decrypts talos/secrets.yaml (and offline backup)
+#   KUBECONFIG_B64  base64 ~/.kube/config (optional; else minted via `topf kubeconfig`)
 #
-# Node list (name/IP/patch) is the source of truth in talos/nodes.yaml.
+# Node list (host/IP/role) is the source of truth in talos/topf.yaml.
 name: talos-gitops
 
 on:
@@ -17,10 +20,12 @@ on:
     branches: [main]
     paths:
       - "talos/**"
+      - ".sops.yaml"
       - ".github/workflows/talos-gitops.yaml"
   pull_request:
     paths:
       - "talos/**"
+      - ".sops.yaml"
       - ".github/workflows/talos-gitops.yaml"
   workflow_dispatch:
     inputs:
@@ -34,7 +39,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  TALOS_VERSION: v1.14.0
+  TOPF_VERSION: v0.6.0
+  SOPS_VERSION: v3.13.3
+  TALOS_VERSION: v1.14.0 # talosctl, for validate + etcd quorum gate
   KUBECTL_VERSION: v1.37.0
 
 jobs:
@@ -44,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install talosctl
+      - name: Install topf + sops + talosctl
         run: |
           set -euo pipefail
           ARCH=$(uname -m)
@@ -53,71 +60,89 @@ jobs:
             aarch64|arm64) ARCH=arm64 ;;
             *) echo "unsupported arch $ARCH" >&2; exit 1 ;;
           esac
-          curl -sSL -o talosctl "https://github.com/siderolabs/talos/releases/download/${TALOS_VERSION}/talosctl-linux-${ARCH}"
-          chmod +x talosctl
-          sudo mv talosctl /usr/local/bin/talosctl
+          curl -sSL -o /tmp/topf.tar.gz "https://github.com/postfinance/topf/releases/download/${TOPF_VERSION}/topf_linux_${ARCH}.tar.gz"
+          tar xzf /tmp/topf.tar.gz -C /tmp
+          sudo mv /tmp/topf /usr/local/bin/topf
+          topf --version
+          curl -sSL -o /tmp/sops "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.${ARCH}"
+          chmod +x /tmp/sops
+          sudo mv /tmp/sops /usr/local/bin/sops
+          sops --version
+          curl -sSL -o /tmp/talosctl "https://github.com/siderolabs/talos/releases/download/${TALOS_VERSION}/talosctl-linux-${ARCH}"
+          chmod +x /tmp/talosctl
+          sudo mv /tmp/talosctl /usr/local/bin/talosctl
           talosctl version --client
 
-      - name: Validate inventory vs patch files
+      - name: Structural check (always runs)
         run: |
           set -euo pipefail
           python3 - <<'EOF'
-          import sys, yaml
-          inv = yaml.safe_load(open('talos/nodes.yaml'))
-          assert inv.get('clusterName') == 'homelab', 'clusterName must be homelab'
-          assert inv.get('endpoint') == 'https://10.3.3.8:6443', 'endpoint must be https://10.3.3.8:6443'
-          nodes = inv.get('nodes', [])
-          assert len(nodes) >= 3, 'need at least 3 nodes for etcd quorum'
-          seen = set()
-          for n in nodes:
-              for k in ('name', 'ip', 'patch'):
-                  assert n.get(k), f"node entry missing {k}: {n}"
-              assert (n['name'], n['ip']) not in seen, f"duplicate node {n}"
-              seen.add((n['name'], n['ip']))
-              p = yaml.safe_load(open(f"talos/{n['patch']}"))
-              assert p.get('hostname') == n['name'], (
-                  f"{n['patch']} hostname {p.get('hostname')!r} != inventory name {n['name']!r}")
-              print(f"ok: {n['name']} {n['ip']} {n['patch']}")
-          print(f"inventory valid: {len(nodes)} nodes")
+          import glob, yaml
+          inv = yaml.safe_load(open('talos/topf.yaml'))
+          assert inv['clusterName'] == 'homelab', inv.get('clusterName')
+          assert inv['clusterEndpoint'] == 'https://10.3.3.8:6443'
+          assert len(inv.get('nodes', [])) >= 3, 'need at least 3 nodes for etcd quorum'
+          for n in inv['nodes']:
+              assert n.get('host') and n.get('ip') and n.get('role'), f"incomplete node: {n}"
+              print(f"ok: {n['host']} {n['ip']} {n['role']}")
+          patches = sorted(glob.glob('talos/all/*') + glob.glob('talos/control-plane/*') +
+                           glob.glob('talos/worker/*') + glob.glob('talos/node/*/*'))
+          assert patches, 'no patches found under talos/'
+          for p in patches:
+              if p.endswith('.tpl'):
+                  print(f"ok (template, rendered at plan time): {p}")
+                  continue
+              docs = [d for d in yaml.safe_load_all(open(p)) if d]
+              assert docs, f"empty patch: {p}"
+              print(f"ok ({len(docs)} docs): {p}")
+          print('structural check passed')
           EOF
 
       - name: Render machine configs
-        if: secrets.TALOS_SECRETS_YAML_B64 != ''
+        if: secrets.SOPS_AGE_KEY != ''
         env:
-          TALOS_SECRETS_YAML_B64: ${{ secrets.TALOS_SECRETS_YAML_B64 }}
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |
           set -euo pipefail
-          mkdir -p _talos
-          echo "$TALOS_SECRETS_YAML_B64" | base64 -d > _talos/secrets.yaml
-          chmod 600 _talos/secrets.yaml
-          INV_ENDPOINT=$(python3 -c "import yaml; print(yaml.safe_load(open('talos/nodes.yaml'))['endpoint'])")
-          talosctl gen config homelab "$INV_ENDPOINT" \
-            --with-secrets _talos/secrets.yaml \
-            --config-patch-control-plane @talos/controlplane-patch.yaml \
-            --output-dir _talos --force
-          talosctl validate --config _talos/controlplane.yaml --mode metal || \
-            talosctl validate --config _talos/controlplane.yaml
-          echo "rendered $(wc -l < _talos/controlplane.yaml) lines"
+          if [ ! -f talos/secrets.yaml ]; then
+            echo "talos/secrets.yaml not committed yet (one-time setup pending); skipping render."
+            exit 0
+          fi
+          rm -rf /tmp/rendered
+          topf --topfconfig talos/topf.yaml render -o /tmp/rendered
+          ls -la /tmp/rendered
 
-      - name: Per-node patched render check
-        if: secrets.TALOS_SECRETS_YAML_B64 != ''
+      - name: Validate rendered configs
+        if: secrets.SOPS_AGE_KEY != ''
         run: |
           set -euo pipefail
+          if [ ! -d /tmp/rendered ]; then
+            echo "nothing rendered; skipping validation."
+            exit 0
+          fi
+          for f in /tmp/rendered/*.yaml; do
+            talosctl validate --config "$f" --mode metal
+          done
           python3 - <<'EOF'
-          import subprocess, yaml
-          inv = yaml.safe_load(open('talos/nodes.yaml'))
+          import glob, yaml
+          inv = yaml.safe_load(open('talos/topf.yaml'))
+          assert inv['clusterName'] == 'homelab'
+          assert inv['clusterEndpoint'] == 'https://10.3.3.8:6443'
+          assert len(inv['nodes']) >= 3, 'need at least 3 nodes for etcd quorum'
           for n in inv['nodes']:
-              out = f"_talos/rendered-{n['name']}.yaml"
-              subprocess.run(['talosctl', 'machineconfig', 'patch',
-                              '_talos/controlplane.yaml',
-                              '-p', f"@{n['patch'] if n['patch'].startswith('/') else 'talos/' + n['patch']}",
-                              '-o', out], check=True)
-              print(f"rendered {out}")
+              docs = list(yaml.safe_load_all(open(f"/tmp/rendered/{n['host']}.yaml")))
+              kinds = {d.get('kind') for d in docs if isinstance(d, dict)}
+              assert 'KubeNodeConfig' in kinds, f"{n['host']}: KubeNodeConfig missing"
+              assert 'UnattendedInstallConfig' in kinds, f"{n['host']}: UnattendedInstallConfig missing"
+              hostnames = [d.get('hostname') for d in docs if isinstance(d, dict) and d.get('kind') == 'HostnameConfig']
+              assert hostnames == [n['host']], f"{n['host']}: hostname mismatch {hostnames}"
+              print(f"ok: {n['host']} ({n['ip']}) kinds={sorted(kinds)}")
+          print('render check passed')
           EOF
 
-      - name: Inventory-only notice (no secrets on PR)
-        if: secrets.TALOS_SECRETS_YAML_B64 == ''
-        run: echo "TALOS_SECRETS_YAML_B64 not set; skipped render. Inventory check above is the plan."
+      - name: Inventory-only notice (no age key on PR)
+        if: secrets.SOPS_AGE_KEY == ''
+        run: echo "SOPS_AGE_KEY not set; skipped render. Set the secret to get full plan output."
 
   apply:
     name: apply node-by-node (self-hosted)
@@ -131,7 +156,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install talosctl + kubectl
+      - name: Install topf + sops + talosctl + kubectl
         run: |
           set -euo pipefail
           ARCH=$(uname -m)
@@ -141,85 +166,95 @@ jobs:
             *) echo "unsupported arch $ARCH" >&2; exit 1 ;;
           esac
           OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          BIN_DIR=/usr/local/bin
+          command -v sudo >/dev/null || BIN_DIR="$HOME/.local/bin"
+          mkdir -p "$BIN_DIR"
+          export PATH="$BIN_DIR:$PATH"
+          if ! command -v topf >/dev/null; then
+            curl -sSL -o /tmp/topf.tar.gz "https://github.com/postfinance/topf/releases/download/${TOPF_VERSION}/topf_${OS}_${ARCH}.tar.gz"
+            tar xzf /tmp/topf.tar.gz -C /tmp
+            mv /tmp/topf "$BIN_DIR/topf"
+          fi
+          topf --version
+          if ! command -v sops >/dev/null; then
+            curl -sSL -o "$BIN_DIR/sops" "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.${OS}.${ARCH}"
+            chmod +x "$BIN_DIR/sops"
+          fi
+          sops --version
           if ! command -v talosctl >/dev/null; then
-            curl -sSL -o /tmp/talosctl "https://github.com/siderolabs/talos/releases/download/${TALOS_VERSION}/talosctl-${OS}-${ARCH}"
-            chmod +x /tmp/talosctl
-            sudo mv /tmp/talosctl /usr/local/bin/talosctl || mv /tmp/talosctl "$HOME/talosctl"
-            export PATH="$HOME:$PATH"
+            curl -sSL -o "$BIN_DIR/talosctl" "https://github.com/siderolabs/talos/releases/download/${TALOS_VERSION}/talosctl-${OS}-${ARCH}"
+            chmod +x "$BIN_DIR/talosctl"
           fi
           talosctl version --client
           if ! command -v kubectl >/dev/null; then
-            curl -sSL -o /tmp/kubectl "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/${OS}/${ARCH}/kubectl"
-            chmod +x /tmp/kubectl
-            sudo mv /tmp/kubectl /usr/local/bin/kubectl || mv /tmp/kubectl "$HOME/kubectl"
+            curl -sSL -o "$BIN_DIR/kubectl" "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/${OS}/${ARCH}/kubectl"
+            chmod +x "$BIN_DIR/kubectl"
           fi
           kubectl version --client
 
       - name: Restore cluster credentials
         env:
-          TALOS_SECRETS_YAML_B64: ${{ secrets.TALOS_SECRETS_YAML_B64 }}
-          TALOSCONFIG_B64: ${{ secrets.TALOSCONFIG_B64 }}
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
           KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
         run: |
           set -euo pipefail
-          test -n "${TALOS_SECRETS_YAML_B64:?set TALOS_SECRETS_YAML_B64}" || exit 1
-          test -n "${TALOSCONFIG_B64:?set TALOSCONFIG_B64}" || exit 1
-          mkdir -p _talos ~/.talos ~/.kube
-          echo "$TALOS_SECRETS_YAML_B64" | base64 -d > _talos/secrets.yaml
-          echo "$TALOSCONFIG_B64" | base64 -d > ~/.talos/config
-          chmod 600 _talos/secrets.yaml ~/.talos/config
-          export TALOSCONFIG=~/.talos/config
+          test -n "${SOPS_AGE_KEY:?set SOPS_AGE_KEY}" || exit 1
+          export SOPS_AGE_KEY TALOSCONFIG=~/.talos/config
+          mkdir -p ~/.talos ~/.kube
+          # talosconfig for the etcd quorum gate; kubeconfig for drain/wait.
+          topf --topfconfig talos/topf.yaml talosconfig --confirm=false > ~/.talos/config
+          chmod 600 ~/.talos/config
           if [ -n "${KUBECONFIG_B64:-}" ]; then
             echo "$KUBECONFIG_B64" | base64 -d > ~/.kube/config
             chmod 600 ~/.kube/config
-          fi
-
-      - name: Render machine configs
-        run: |
-          set -euo pipefail
-          export TALOSCONFIG=~/.talos/config
-          INV_ENDPOINT=$(python3 -c "import yaml; print(yaml.safe_load(open('talos/nodes.yaml'))['endpoint'])")
-          talosctl gen config homelab "$INV_ENDPOINT" \
-            --with-secrets _talos/secrets.yaml \
-            --config-patch-control-plane @talos/controlplane-patch.yaml \
-            --output-dir _talos --force
-          # kubeconfig fallback when KUBECONFIG_B64 was not provided
-          if [ ! -s ~/.kube/config ]; then
-            FIRST_IP=$(python3 -c "import yaml; print(yaml.safe_load(open('talos/nodes.yaml'))['nodes'][0]['ip'])")
-            talosctl kubeconfig --force -n "$FIRST_IP"
+          else
+            topf --topfconfig talos/topf.yaml kubeconfig --confirm=false > ~/.kube/config
+            chmod 600 ~/.kube/config
           fi
           kubectl get nodes -o wide
 
+      - name: Show cluster diff (dry-run)
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          export SOPS_AGE_KEY
+          # Exit 2 means changes detected (not a failure); anything else fails.
+          set +e
+          topf --topfconfig talos/topf.yaml apply --dry-run --confirm=false
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "no changes detected"
+          elif [ "$code" -eq 2 ]; then
+            echo "changes detected, proceeding to rolling apply"
+          else
+            echo "dry-run failed with code $code" >&2
+            exit 1
+          fi
+
       - name: Apply one node at a time
         env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
           DRAIN_BEFORE_APPLY: "true"
         run: |
           set -euo pipefail
-          export TALOSCONFIG=~/.talos/config
-          NODES_TSV=$(python3 -c "
-          import yaml
-          inv = yaml.safe_load(open('talos/nodes.yaml'))
-          ALL = ','.join(n['ip'] for n in inv['nodes'])
-          print(ALL)
-          for n in inv['nodes']:
-              print(f\"{n['ip']}\t{n['name']}\t{n['patch']}\")
-          ")
-          ALL_IPS=$(echo "$NODES_TSV" | head -n1)
+          export SOPS_AGE_KEY TALOSCONFIG=~/.talos/config
+          HOSTS=$(python3 -c "import yaml; print(' '.join(n['host'] for n in yaml.safe_load(open('talos/topf.yaml'))['nodes']))")
+          ALL_IPS=$(python3 -c "import yaml; print(','.join(n['ip'] for n in yaml.safe_load(open('talos/topf.yaml'))['nodes']))")
           echo "etcd set: $ALL_IPS"
           talosctl etcd status -n "$ALL_IPS"
-          echo "$NODES_TSV" | tail -n +2 | while IFS="$(printf '\t')" read -r IP NAME PATCH; do
-            echo "===== $NAME ($IP) patch=$PATCH ====="
+          for HOST in $HOSTS; do
+            echo "===== $HOST ====="
             if [ "${DRAIN_BEFORE_APPLY}" = "true" ]; then
-              kubectl cordon "$NAME"
-              kubectl drain "$NAME" --ignore-daemonsets --delete-emptydir-data --timeout=120s
+              kubectl cordon "$HOST"
+              kubectl drain "$HOST" --ignore-daemonsets --delete-emptydir-data --timeout=120s
             fi
-            talosctl apply-config -n "$IP" --mode auto \
-              --file _talos/controlplane.yaml --config-patch "@talos/$PATCH"
-            # Wait for the node to report Ready (covers automatic reboot when the
-            # change is disruptive; returns fast when it is not).
-            kubectl wait --for=condition=Ready "node/$NAME" --timeout=10m
-            kubectl uncordon "$NAME" || true
+            # TOPF pre-flights node health itself and stabilizes post-apply;
+            # the --nodes-filter loop guarantees strict one-at-a-time order.
+            topf --topfconfig talos/topf.yaml apply --nodes-filter "^${HOST}$" --confirm=false
+            kubectl wait --for=condition=Ready "node/$HOST" --timeout=10m
+            kubectl uncordon "$HOST" || true
             talosctl etcd status -n "$ALL_IPS"
             kubectl get nodes -o wide
-            echo "----- $NAME done, quorum healthy -----"
+            echo "----- $HOST done, quorum healthy -----"
           done

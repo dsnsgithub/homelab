@@ -14,30 +14,20 @@ Normal changes follow this loop, and no manual install commands are needed:
 ## Regenerate Talos Config
 
 Pushes to `main` that touch `talos/` roll out automatically via the
-`talos-gitops` workflow (self-hosted runner, one node at a time with etcd
-checks). See [Talos GitOps](talos-gitops.md) for runner and secret setup.
-Just edit `talos/controlplane-patch.yaml` or `talos/nodes/cp-0N.yaml` (+ the
-matching `talos/nodes.yaml` entry), merge, and watch Actions.
+`talos-gitops` workflow (TOPF on a self-hosted runner, one node at a time
+with etcd checks). See [Talos GitOps](talos-gitops.md) for runner and secret setup.
+Just edit a patch under `talos/`, bump versions or add a node entry in
+`talos/topf.yaml`, merge, and watch Actions.
 
-Manual equivalent (same commands the workflow runs) for air-gapped fixes:
+Manual equivalent (same tool the workflow runs) for air-gapped fixes:
 
 ```bash
-talosctl gen config homelab https://10.3.3.8:6443 \
-  --with-secrets _talos/secrets.yaml \
-  --config-patch-control-plane @talos/controlplane-patch.yaml \
-  --output-dir _talos --force
+export SOPS_AGE_KEY=$(grep '^AGE-SECRET-KEY' ~/.config/sops/age/keys.txt)
+topf --topfconfig talos/topf.yaml render -o /tmp/rendered
+topf --topfconfig talos/topf.yaml apply --dry-run # exit 2 = changes pending
 
-talosctl apply-config -n <node-1> \
-  --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-01.yaml
-talosctl -n <node-1> reboot
-
-talosctl apply-config -n <node-2> \
-  --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-02.yaml
-talosctl -n <node-2> reboot
-
-talosctl apply-config -n <node-3> \
-  --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-03.yaml
-talosctl -n <node-3> reboot
+# Roll out one node at a time (drain first, see below), e.g.:
+topf --topfconfig talos/topf.yaml apply --nodes-filter "^talos-m2$" --confirm=false
 ```
 
 ## Drain and Undrain a Node
@@ -79,12 +69,15 @@ Tip: `talosctl reboot -n <node-ip> --drain` cordons, drains, waits for `Ready`, 
 
 ## Add a Node
 
-1. Add `talos/nodes/cp-04.yaml` with the new hostname, using the same `HostnameConfig` shape as the existing three files.
-2. Regenerate the configs as shown above, then apply the new node config and register it:
+1. Add a node entry (`host`/`ip`/`role`) to `talos/topf.yaml`. The hostname
+   is templated from `host`, so no other files are needed unless the node
+   needs an override under `talos/node/<host>/`.
+2. Merge to `main` so the GitOps workflow renders the new config, then apply
+   the new node config and register it (fresh node, maintenance mode):
 
 ```bash
-talosctl apply-config --insecure -n <node-4> \
-  --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-04.yaml
+topf --topfconfig talos/topf.yaml render -o /tmp/rendered
+talosctl apply-config --insecure -n <node-4> --file /tmp/rendered/<new-host>.yaml
 talosctl config endpoint <node-1> <node-2> <node-3> <node-4>
 talosctl config node <node-1> <node-2> <node-3> <node-4>
 ```
