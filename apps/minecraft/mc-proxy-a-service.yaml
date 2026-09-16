@@ -1,0 +1,24 @@
+# Dedicated entrypoint for proxy A. externalTrafficPolicy: Local makes kube-vip
+# only announce 10.3.3.11 from the node actually running pod A, so draining
+# that node moves pod A and VIP .11 together while pod B + VIP .12 stay
+# untouched. Requires svc_election=true (already set in infra/kube-vip).
+apiVersion: v1
+kind: Service
+metadata:
+  name: mc-proxy-a
+  namespace: minecraft
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 10.3.3.11
+  externalTrafficPolicy: Local
+  selector:
+    app: mc-proxy
+    proxy: a
+  ports:
+  - name: minecraft
+    port: 25565
+    targetPort: 25577
+  - name: voice-chat
+    port: 25577
+    protocol: UDP
+    targetPort: 25577

@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mc-proxy-b
+  namespace: minecraft
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: mc-proxy
+      proxy: b
+  template:
+    metadata:
+      labels:
+        app: mc-proxy
+        proxy: b
+    spec:
+      # Never co-locate the two proxies: draining one node must leave the peer alive.
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app: mc-proxy
+            topologyKey: kubernetes.io/hostname
+      # Transfer window: RCON move + client re-handshake to the peer before SIGTERM/SIGKILL.
+      terminationGracePeriodSeconds: 90
+      initContainers:
+      - name: init-configs
+        image: busybox:latest
+        command: ['sh', '-c', 'cp /config-source/velocity.toml /server/velocity.toml && cp /config-source/forwarding.secret /server/forwarding.secret']
+        volumeMounts:
+        - name: server-data
+          mountPath: /server
+        - name: config-source
+          mountPath: /config-source
+      containers:
+      - name: proxy
+        image: itzg/mc-proxy:java25
+        env:
+        - name: TYPE
+          value: "VELOCITY"
+        - name: MINECRAFT_VERSION
+          value: "26.2"
+        - name: MODRINTH_PROJECTS
+          value: |
+            velocity-limbo-handler
+            simple-voice-chat:alpha
+            velocitytransfer
+        - name: ENABLE_RCON
+          value: "true"
+        - name: RCON_PORT
+          value: "25575"
+        - name: RCON_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: velocity-config
+              key: rcon-password
+              # Allows rollout before you reseal the secret with the new key;
+              # transfer just degrades until the reseal (see TEMPLATE comment).
+              optional: true
+        # Stable peer entrypoint (mirror of mc-proxy-a). See notes there.
+        - name: PEER_HOST
+          value: "mc.dsns.dev"
+        - name: PEER_PORT
+          value: "25565"
+        ports:
+        - containerPort: 25577
+          name: velocity
+        - containerPort: 25577
+          protocol: UDP
+          name: voice-chat
+        - containerPort: 25575
+          name: rcon
+        volumeMounts:
+        - name: server-data
+          mountPath: /server
+        stdin: true
+        tty: true
+        readinessProbe:
+          tcpSocket:
+            port: 25577
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          failureThreshold: 3
+        lifecycle:
+          preStop:
+            exec:
+              command: ['sh', '-c', 'rcon-cli transfer "$PEER_HOST:$PEER_PORT" all || true; sleep 20']
+      volumes:
+      - name: server-data
+        emptyDir: {}
+      - name: config-source
+        secret:
+          secretName: velocity-config

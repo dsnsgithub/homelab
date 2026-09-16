@@ -13,6 +13,14 @@ spec:
       labels:
         app: limbo
     spec:
+      # Keep the two limbos apart so one drained node never takes both.
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app: limbo
+            topologyKey: kubernetes.io/hostname
       initContainers:
       - name: download-schematic
         image: alpine:latest

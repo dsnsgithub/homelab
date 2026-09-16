@@ -6,5 +6,8 @@ resources:
   - velocity-secret.sealed.yaml
   - limbo-deployment.yaml
   - limbo-service.yaml
-  - mc-proxy-deployment.yaml
-  - mc-proxy-service.yaml
+  - mc-proxy-a-deployment.yaml
+  - mc-proxy-b-deployment.yaml
+  - mc-proxy-a-service.yaml
+  - mc-proxy-b-service.yaml
+  - mc-proxy-pdb.yaml

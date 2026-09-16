@@ -1,0 +1,26 @@
+# Covers both proxies as one group: one may be disrupted (drained/updated),
+# but never both at once. Do NOT scope this per-deployment with minAvailable: 1,
+# that would block every drain of a 1-replica deployment.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mc-proxy
+  namespace: minecraft
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: mc-proxy
+---
+# Limbo holds no client TCP itself (proxy-to-limbo is inside the cluster and
+# Velocity fails over to `try` on backend loss), but keep one copy up anyway.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: limbo
+  namespace: minecraft
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: limbo

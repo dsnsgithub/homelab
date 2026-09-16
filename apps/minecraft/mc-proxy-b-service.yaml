@@ -1,0 +1,23 @@
+# Dedicated entrypoint for proxy B. See mc-proxy-a-service.yaml for why each
+# proxy gets its own VIP. Router must forward a second public port, e.g.
+# WAN:25566 -> 10.3.3.12:25565, which is the preStop transfer target of proxy A.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mc-proxy-b
+  namespace: minecraft
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 10.3.3.12
+  externalTrafficPolicy: Local
+  selector:
+    app: mc-proxy
+    proxy: b
+  ports:
+  - name: minecraft
+    port: 25565
+    targetPort: 25577
+  - name: voice-chat
+    port: 25577
+    protocol: UDP
+    targetPort: 25577
