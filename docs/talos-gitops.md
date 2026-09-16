@@ -10,6 +10,28 @@ Flow: push/PR → `plan` job (GitHub-hosted, renders + validates configs) →
 on merge to `main`, `apply` job (self-hosted, drains → applies → waits
 `Ready` → checks etcd quorum → next node).
 
+## Why raw talosctl, not talhelper (yet)
+
+[talhelper](https://github.com/budimanjojo/talhelper) is the community
+standard, and this was evaluated (Sep 2026, talhelper v3.1.17, Talos
+v1.14.0). It cannot render this cluster today:
+
+* Its patch decoder rejects the `KubeNodeConfig` and
+  `UnattendedInstallConfig` documents (`not registered`), so the
+  control-plane patch cannot be expressed.
+* Its generated configs use the pre-1.14 schema: the
+  `exclude-from-external-load-balancers` label (which production deletes
+  for kube-vip) comes back, and the VIP-excluding `nodeIP.validSubnets`
+  are lost. Applying that output would regress live behavior.
+
+Talos 1.14 moved node taints/labels/IP into the new `KubeNodeConfig` kind
+(and talhelper's maintainer notes multi-doc support is a known gap while
+Talos keeps reshaping config documents). Re-evaluate talhelper once it
+supports `KubeNodeConfig` patches — the workflow's plan/apply structure
+stays the same, only the render step changes (`talhelper genconfig` +
+SOPS-encrypted `talsecret.sops.yaml` instead of `talosctl gen config` +
+GH-secret blobs).
+
 ## One-time setup
 
 1. Give each node a stable address. Either set DHCP reservations on your
