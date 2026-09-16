@@ -21,11 +21,11 @@ talosctl gen config homelab https://10.3.3.8:6443 \
   --config-patch-control-plane @talos/controlplane-patch.yaml \
   --output-dir _talos --force
 
-talosctl apply-config --insecure -n <node-1> \
+talosctl apply-config -n <node-1> \
   --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-01.yaml
-talosctl apply-config --insecure -n <node-2> \
+talosctl apply-config -n <node-2> \
   --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-02.yaml
-talosctl apply-config --insecure -n <node-3> \
+talosctl apply-config -n <node-3> \
   --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-03.yaml
 ```
 
