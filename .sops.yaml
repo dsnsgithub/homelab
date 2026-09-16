@@ -1,3 +1,5 @@
 creation_rules:
   - path_regex: talos/secrets\.yaml$
-    age: age1t44kqfpkpk4zy4hnlqqm3awcy893mpk7jts6lpknw75uaq8s6cusplzx3e
+    age: 
+    - age1t44kqfpkpk4zy4hnlqqm3awcy893mpk7jts6lpknw75uaq8s6cusplzx3e
+    - age1hveh6unu3l0relwy03d8wpgn397er5h9psvgecwz3897wnm774pq0e8qde
