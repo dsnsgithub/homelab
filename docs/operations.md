@@ -23,10 +23,15 @@ talosctl gen config homelab https://10.3.3.8:6443 \
 
 talosctl apply-config -n <node-1> \
   --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-01.yaml
+talosctl -n <node-1> reboot
+
 talosctl apply-config -n <node-2> \
   --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-02.yaml
+talosctl -n <node-2> reboot
+
 talosctl apply-config -n <node-3> \
   --file _talos/controlplane.yaml --config-patch @talos/nodes/cp-03.yaml
+talosctl -n <node-3> reboot
 ```
 
 ## Add a Node
