@@ -3,7 +3,6 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
-  - v2ray-configmap.yaml
   - v2ray-deployment.yaml
   - v2ray-secret.sealed.yaml
   - v2ray-service.yaml

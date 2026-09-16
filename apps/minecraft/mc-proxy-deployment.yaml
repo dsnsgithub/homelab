@@ -16,14 +16,12 @@ spec:
       initContainers:
       - name: init-configs
         image: busybox:latest
-        command: ['sh', '-c', 'cp /config-template/velocity.toml /server/velocity.toml && cp /forwarding-secret/forwarding.secret /server/forwarding.secret']
+        command: ['sh', '-c', 'cp /config-source/velocity.toml /server/velocity.toml && cp /config-source/forwarding.secret /server/forwarding.secret']
         volumeMounts:
         - name: server-data
           mountPath: /server
-        - name: velocity-config-template
-          mountPath: /config-template
-        - name: forwarding-secret
-          mountPath: /forwarding-secret
+        - name: config-source
+          mountPath: /config-source
       containers:
       - name: proxy
         image: itzg/mc-proxy:java25
@@ -50,15 +48,6 @@ spec:
       volumes:
       - name: server-data
         emptyDir: {}
-      - name: velocity-config-template
-        configMap:
-          name: velocity-config
-          items:
-          - key: velocity.toml
-            path: velocity.toml
-      - name: forwarding-secret
+      - name: config-source
         secret:
-          secretName: velocity-forwarding-secret
-          items:
-          - key: forwarding.secret
-            path: forwarding.secret
+          secretName: velocity-config

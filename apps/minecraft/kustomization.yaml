@@ -3,7 +3,6 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
-  - velocity-configmap.yaml
   - velocity-secret.sealed.yaml
   - limbo-deployment.yaml
   - limbo-service.yaml
