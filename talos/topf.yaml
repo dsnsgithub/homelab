@@ -1,25 +1,15 @@
-# Talos cluster definition — single source of truth for machine configs.
-# Managed with TOPF (renders Talos-native multi-doc configs, 1.14-aware):
-#   topf render -o /tmp/rendered   # offline preview
-#   topf apply --dry-run           # diff against live nodes (exit 2 = changes)
-#
-# Fill in the DHCP-reserved (or static) LAN IP of each node. Hostnames are
-# applied via all/01-hostname.yaml.tpl. Patches compose in order:
-# all/ -> control-plane/ -> node/<host>/ (lexicographic within each dir).
-# To add a node: append here. The apply workflow rolls nodes out in order,
-# one at a time, so etcd never loses quorum.
 clusterName: homelab
 clusterEndpoint: https://10.3.3.8:6443
 kubernetesVersion: 1.37.0
-talosVersion: 1.14.0 # Renovate-trackable; workflow pins tooling to this
+talosVersion: 1.14.0
 
 nodes:
   - host: talos-m2
-    ip: 10.3.3.21 # TODO: replace with the real DHCP-reserved IP
+    ip: 10.3.3.198
     role: control-plane
   - host: talos-m4
-    ip: 10.3.3.22 # TODO: replace with the real DHCP-reserved IP
+    ip: 10.3.3.197
     role: control-plane
   - host: talos-raider
-    ip: 10.3.3.23 # TODO: replace with the real DHCP-reserved IP
+    ip: 10.3.3.192
     role: control-plane

@@ -1,4 +1,3 @@
-# HA VIP (.8) and etcd peer subnets for all control-plane nodes.
 machine:
   network:
     interfaces:

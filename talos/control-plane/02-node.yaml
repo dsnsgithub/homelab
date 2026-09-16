@@ -1,6 +1,3 @@
-# Node IP selection (never claim the VIPs) and schedulable control planes:
-# delete the default NoSchedule taint and the external-LB exclusion label
-# (kube-vip must be able to bind VIPs on these nodes).
 apiVersion: v1alpha1
 kind: KubeNodeConfig
 nodeIP:

@@ -1,6 +1,3 @@
-# Install disk selection for (re)provisioning. Talos >= 1.14 requires the
-# UnattendedInstallConfig document; .machine.install is deprecated and the
-# two are mutually exclusive (a node rejects a config containing both).
 apiVersion: v1alpha1
 kind: UnattendedInstallConfig
 provisioning:
