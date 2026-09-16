@@ -13,6 +13,7 @@ cluster:
       - '!10.3.3.8/32'
       - '!10.3.3.9/32'
       - '!10.3.3.10/32'
+      - '!10.3.3.11/32'
 ---
 apiVersion: v1alpha1
 kind: KubeNodeConfig
@@ -22,6 +23,7 @@ nodeIP:
     - '!10.3.3.8/32'
     - '!10.3.3.9/32'
     - '!10.3.3.10/32'
+    - '!10.3.3.11/32'
 taints:
   node-role.kubernetes.io/control-plane:
     $patch: delete

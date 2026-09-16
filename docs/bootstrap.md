@@ -8,7 +8,7 @@ Install the following tools on your own computer first.
 | `kubectl` | Must match Kubernetes `v1.37.0` | Workload management |
 | `kubeseal` | Any recent release | Secret encryption for Git |
 
-At least 3 Talos nodes are required (the etcd quorum minimum; every node is a schedulable control-plane member). This cluster runs 3 bridged VMs (2 UTM, 1 Proxmox) on `10.3.3.0/24`. Any platform works if the nodes share L2 adjacency, which ARP-based VIP failover requires. Reserve one address per node and keep the `.8`, `.9` (LB), and `.10` VIPs outside the DHCP pool. DNS-01 challenges require a Cloudflare DNS-Edit token, with `dsns.dev`, `seung.dev`, and `mseung.dev` delegated to Cloudflare.
+At least 3 Talos nodes are required (the etcd quorum minimum; every node is a schedulable control-plane member). This cluster runs 3 bridged VMs (2 UTM, 1 Proxmox) on `10.3.3.0/24`. Any platform works if the nodes share L2 adjacency, which ARP-based VIP failover requires. Reserve one address per node and keep the `.8`, `.9` (LB), `.10` (LB), and `.11` (LB) VIPs outside the DHCP pool. DNS-01 challenges require a Cloudflare DNS-Edit token, with `dsns.dev`, `seung.dev`, and `mseung.dev` delegated to Cloudflare.
 
 ## 0. Build Talos ISOs and Boot the VMs
 
