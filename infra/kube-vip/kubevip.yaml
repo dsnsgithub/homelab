@@ -27,9 +27,6 @@ spec:
       - args:
         - manager
         env:
-        # Talos mode: control-plane VIP (.8) is handled by Talos built-in VIP
-        # (see talos/controlplane-patch.yaml). This DaemonSet only announces
-        # LoadBalancer services (.9/.10).
         - name: vip_arp
           value: "true"
         - name: vip_interface

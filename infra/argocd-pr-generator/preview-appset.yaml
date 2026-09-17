@@ -1,0 +1,66 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: preview-deploy
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - pullRequest:
+              github:
+                owner: dsnsgithub
+                repo: homelab
+                tokenRef:
+                  secretName: github-pr-generator-token
+                  key: token
+                labels:
+                  - preview
+              requeueAfterSeconds: 120
+          - git:
+              repoURL: https://github.com/dsnsgithub/homelab.git
+              revision: "{{.head_sha}}"
+              directories:
+                - path: apps/*
+                - path: apps/web-proxy
+                  exclude: true
+  template:
+    metadata:
+      name: "{{.path.basename}}-pr-{{.number}}"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/dsnsgithub/homelab.git
+        targetRevision: "{{.head_sha}}"
+        path: "{{.path.path}}"
+        kustomize:
+          namespace: "{{.path.basename}}-pr-{{.number}}"
+          patches:
+            - target:
+                kind: Service
+              patch: |-
+                apiVersion: v1
+                kind: Service
+                metadata:
+                  name: preview-strip-lb
+                spec:
+                  type: ClusterIP
+                  loadBalancerIP: null
+                  loadBalancerSourceRanges: null
+                  externalIPs: null
+                  externalTrafficPolicy: null
+                  healthCheckNodePort: null
+                  allocateLoadBalancerNodePorts: null
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{.path.basename}}-pr-{{.number}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
