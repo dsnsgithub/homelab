@@ -39,6 +39,22 @@ spec:
         path: "{{.path.path}}"
         kustomize:
           namespace: "{{.path.basename}}-pr-{{.number}}"
+          patches:
+            - target:
+                kind: Service
+              patch: |-
+                apiVersion: v1
+                kind: Service
+                metadata:
+                  name: preview-strip-lb
+                spec:
+                  type: ClusterIP
+                  loadBalancerIP: null
+                  loadBalancerSourceRanges: null
+                  externalIPs: null
+                  externalTrafficPolicy: null
+                  healthCheckNodePort: null
+                  allocateLoadBalancerNodePorts: null
       destination:
         server: https://kubernetes.default.svc
         namespace: "{{.path.basename}}-pr-{{.number}}"
