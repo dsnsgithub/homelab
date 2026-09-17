@@ -1,0 +1,14 @@
+# Consumed by apps/t3-code/pvc.yaml (and future stateful apps).
+# placementCount 2 keeps two DRBD replicas across the 3 Talos nodes.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: piraeus-storage
+provisioner: linstor.csi.linbit.com
+parameters:
+  linstor.csi.linbit.com/storagePool: pool1
+  linstor.csi.linbit.com/placementCount: "2"
+  linstor.csi.linbit.com/resourceGroup: piraeus-storage
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Delete

@@ -1,0 +1,49 @@
+# Talos override from https://piraeus.io/docs/stable/how-to/talos/:
+# Talos ships DRBD via the siderolabs/drbd system extension (see
+# talos/controlplane-patch.yaml and docs/bootstrap.md), has no systemd,
+# and mounts /etc/lvm read-only. Drop the module-builder/sidecar bits and
+# remap the LVM state dirs to /var.
+apiVersion: piraeus.io/v1
+kind: LinstorSatelliteConfiguration
+metadata:
+  name: talos-loader-override
+spec:
+  podTemplate:
+    spec:
+      initContainers:
+        - name: drbd-shutdown-guard
+          $patch: delete
+        - name: drbd-module-loader
+          $patch: delete
+      volumes:
+        - name: run-systemd-system
+          $patch: delete
+        - name: run-drbd-shutdown-guard
+          $patch: delete
+        - name: systemd-bus-socket
+          $patch: delete
+        - name: lib-modules
+          $patch: delete
+        - name: usr-src
+          $patch: delete
+        - name: etc-lvm-backup
+          hostPath:
+            path: /var/etc/lvm/backup
+            type: DirectoryOrCreate
+        - name: etc-lvm-archive
+          hostPath:
+            path: /var/etc/lvm/archive
+            type: DirectoryOrCreate
+---
+# Backing pool for the piraeus-storage StorageClass. fileThinPool needs no
+# extra disk prep on the nodes, which suits the single-disk Talos VMs.
+# Thin-provisioned: only actually written bytes consume host disk.
+apiVersion: piraeus.io/v1
+kind: LinstorSatelliteConfiguration
+metadata:
+  name: storage-pool
+spec:
+  storagePools:
+    - name: pool1
+      fileThinPool:
+        directory: /var/lib/piraeus-datastore/pool1

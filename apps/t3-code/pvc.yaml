@@ -4,6 +4,7 @@ metadata:
   name: t3-data
   namespace: t3-code
 spec:
+  storageClassName: piraeus-storage
   accessModes:
     - ReadWriteOnce
   resources:
@@ -16,6 +17,7 @@ metadata:
   name: t3-repos
   namespace: t3-code
 spec:
+  storageClassName: piraeus-storage
   accessModes:
     - ReadWriteOnce
   resources:

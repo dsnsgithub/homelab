@@ -14,7 +14,7 @@ If you are rebuilding onto an existing healthy cluster, skip to [step 4](#4-inst
 
 ## 1. Download Talos ISOs and Boot VMs
 
-Visit https://factory.talos.dev and download the ISOs for your platform, adding system extensions as needed.
+Visit https://factory.talos.dev and download the ISOs for your platform, adding system extensions as needed. Always include the `siderolabs/drbd` extension, which Piraeus/LINSTOR needs for replicated volumes (loaded via `machine.kernel.modules` in `talos/all/02-drbd.yaml`).
 
 Create the VMs by attaching the matching ISO. If you are using UTM, enable **Apple Virtualization** instead of QEMU to prevent etcd corruption on power loss and use **bridged** networking to give the VMs their own IP.
 

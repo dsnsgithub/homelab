@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Piraeus Operator v2 (manages the LINSTOR cluster). Pinned to a stable
+# release; bump the ref to upgrade.
+# See https://piraeus.io/docs/stable/upgrade/migration/4-install-operator-v2
+resources:
+  - https://github.com/piraeusdatastore/piraeus-operator//config/default?ref=v2.11.0
+
+namespace: piraeus-datastore

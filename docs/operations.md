@@ -56,3 +56,14 @@ talosctl -n <node-1>,<node-2>,<node-3> etcd members
 talosctl -n <node-1>,<node-2>,<node-3> etcd status
 kubectl get nodes -o wide
 ```
+
+## Storage (Piraeus)
+
+Replicated block storage comes from Piraeus Operator v2 (LINSTOR/DRBD), synced by Argo CD before workloads: `piraeus-operator` (wave `-2`), then `piraeus-datastore` (wave `-1`) which creates the `LinstorCluster`, a thin `pool1` pool (`/var/lib/piraeus-datastore/pool1` on each node), and the `piraeus-storage` StorageClass (2 replicas). Claim it with `storageClassName: piraeus-storage`, as `apps/t3-code/pvc.yaml` does.
+
+```bash
+kubectl -n piraeus-datastore exec deploy/linstor-controller -- linstor storage-pool list
+kubectl -n piraeus-datastore exec deploy/linstor-controller -- linstor resource list-volumes
+```
+
+New nodes pick up the pool automatically once they run the same Talos schematic (with the `siderolabs/drbd` extension) and machine config. Volumes survive single-node loss via the second replica; back up volume contents before a full-cluster reset.

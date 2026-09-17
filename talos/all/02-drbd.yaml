@@ -1,0 +1,11 @@
+# Piraeus/LINSTOR needs the in-kernel DRBD module. The module itself comes
+# from the siderolabs/drbd system extension baked into the Talos image
+# (see docs/bootstrap.md); here we just load it with replication helpers
+# disabled, per https://piraeus.io/docs/stable/how-to/talos/
+machine:
+  kernel:
+    modules:
+      - name: drbd
+        parameters:
+          - usermode_helper=disabled
+      - name: drbd_transport_tcp
