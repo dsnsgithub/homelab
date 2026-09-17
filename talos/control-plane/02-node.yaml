@@ -1,0 +1,16 @@
+apiVersion: v1alpha1
+kind: KubeNodeConfig
+nodeIP:
+  validSubnets:
+    - 10.3.3.0/24
+    - '!10.3.3.8/32'
+    - '!10.3.3.9/32'
+    - '!10.3.3.10/32'
+    - '!10.3.3.11/32'
+    - '!10.3.3.12/32'
+taints:
+  node-role.kubernetes.io/control-plane:
+    $patch: delete
+labels:
+  node.kubernetes.io/exclude-from-external-load-balancers:
+    $patch: delete

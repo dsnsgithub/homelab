@@ -1,0 +1,15 @@
+clusterName: homelab
+clusterEndpoint: https://10.3.3.8:6443
+kubernetesVersion: 1.37.0
+talosVersion: 1.14.0
+
+nodes:
+  - host: talos-m2
+    ip: 10.3.3.198
+    role: control-plane
+  - host: talos-m4
+    ip: 10.3.3.197
+    role: control-plane
+  - host: talos-raider
+    ip: 10.3.3.192
+    role: control-plane

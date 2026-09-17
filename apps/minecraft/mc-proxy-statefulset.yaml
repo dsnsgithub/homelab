@@ -36,12 +36,14 @@ spec:
       initContainers:
       - name: init-configs
         image: busybox:latest
-        command: ['sh', '-c', 'cp /config-source/velocity.toml /server/velocity.toml && cp /config-source/forwarding.secret /server/forwarding.secret']
+        command: ['sh', '-c', 'cp /config-template/velocity.toml /server/velocity.toml && cp /forwarding-secret/forwarding.secret /server/forwarding.secret']
         volumeMounts:
         - name: server-data
           mountPath: /server
-        - name: config-source
-          mountPath: /config-source
+        - name: velocity-config-template
+          mountPath: /config-template
+        - name: forwarding-secret
+          mountPath: /forwarding-secret
       containers:
       - name: proxy
         image: itzg/mc-proxy:java25
@@ -62,7 +64,7 @@ spec:
         - name: RCON_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: velocity-config
+              name: velocity-forwarding-secret
               key: rcon-password
               # Allows rollout before you reseal the secret with the new key;
               # transfer just degrades until the reseal (see TEMPLATE comment).
@@ -103,6 +105,15 @@ spec:
       volumes:
       - name: server-data
         emptyDir: {}
-      - name: config-source
+      - name: velocity-config-template
+        configMap:
+          name: velocity-config
+          items:
+          - key: velocity.toml
+            path: velocity.toml
+      - name: forwarding-secret
         secret:
-          secretName: velocity-config
+          secretName: velocity-forwarding-secret
+          items:
+          - key: forwarding.secret
+            path: forwarding.secret

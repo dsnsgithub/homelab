@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: velocity-config
+  namespace: minecraft
+data:
+  velocity.toml: |
+    config-version = "2.8"
+    bind = "0.0.0.0:25577"
+    motd = "<gold>mc.dsns.dev\n<gray>SMP, Archive, and more"
+    show-max-players = 500
+    online-mode = true
+    force-key-authentication = true
+    prevent-client-proxy-connections = false
+    player-info-forwarding-mode = "MODERN"
+    forwarding-secret-file = "forwarding.secret"
+    announce-forge = false
+    kick-existing-players = false
+    ping-passthrough = "DISABLED"
+    enable-player-address-logging = true
+
+    [servers]
+    limbo = "limbo-service:25565"
+    afk = "limbo-service:25565"
+    lobby = "10.3.3.188:25565"
+    try = ["lobby", "limbo"]
+
+    [forced-hosts]
+
+    [advanced]
+    compression-threshold = 256
+    compression-level = -1
+    login-ratelimit = 3000
+    connection-timeout = 5000
+    read-timeout = 30000
+    haproxy-protocol = false
+    tcp-fast-open = false
+    bungee-plugin-message-channel = true
+    show-ping-requests = false
+    failover-on-unexpected-server-disconnect = true
+    announce-proxy-commands = true
+    log-command-executions = false
+    log-player-connections = true
+    accepts-transfers = true
+
+    [query]
+    enabled = false
+    port = 25577
+    map = "Velocity"
+    show-plugins = false
+
+    [packet-limiter]
+    interval = 7
+    packets-per-second = -1
+    bytes-per-second = -1
+    decompressed-bytes-per-second = 5242880
+  server.toml: |
+    welcome_message = "Type /server [name] to move between servers!"
+    action_bar = "Welcome to mc.dsns.dev!"
+
+    default_game_mode = "survival"
+
+    [forwarding]
+    method = "MODERN"
+    secret = "${VELOCITY_FORWARDING_SECRET}"
+
+    [tab_list]
+    enabled = false
+    player_listed = true
+
+    [boss_bar]
+    enabled = true
+    color = "blue"
+    division = 0
+    health = 1.0
+    title = "<blue><bold>Type /server [name] to move between servers!</bold></blue>"
+
+    [title]
+    enabled = false
+
+    [world]
+    spawn_position = [19.5, 16.0, 22.5]
+    spawn_rotation = [-90.0, 0.0]
+    dimension = "overworld"
+    time = "day"
+
+    [world.experimental]
+    view_distance = 4
+    schematic_file = "spawn.schem"
+    lock_time = true
