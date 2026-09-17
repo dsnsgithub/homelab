@@ -17,7 +17,7 @@ data:
 
   # Posts/updates one comment per preview Application. The IP math must stay
   # in sync with the loadBalancerIP patch in preview-appset.yaml
-  # (10.3.3.240 + PR number mod 10).
+  # (10.3.3.30 + PR number mod 10).
   template.preview-comment: |
     webhook:
       github-api:
@@ -25,7 +25,7 @@ data:
         path: /repos/dsnsgithub/homelab/issues/{{regexReplaceAll ".*-pr-(\\d+)" .app.metadata.name "$1"}}/comments
         body: |
           {
-            "body": "Preview ready: `{{.app.metadata.name}}` @ `{{.app.status.operationState.syncResult.revision}}`\n\n{{ $pr := regexReplaceAll \".*-pr-(\\d+)\" .app.metadata.name \"$1\" }}{{ $last := add 240 (mod (atoi $pr) 10) }}- Minecraft Java: `10.3.3.{{$last}}:25565` / voice `10.3.3.{{$last}}:25577/UDP`\n- Prod stays `10.3.3.11` — do not point players at the preview IP.\n- Argo CD: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}"
+            "body": "Preview ready: `{{.app.metadata.name}}` @ `{{.app.status.operationState.syncResult.revision}}`\n\n{{ $pr := regexReplaceAll \".*-pr-(\\d+)\" .app.metadata.name \"$1\" }}{{ $last := add 30 (mod (atoi $pr) 10) }}- Minecraft Java: `10.3.3.{{$last}}:25565` / voice `10.3.3.{{$last}}:25577/UDP`\n- Prod stays `10.3.3.11` — do not point players at the preview IP.\n- Argo CD: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}"
           }
 
   trigger.on-preview-synced: |

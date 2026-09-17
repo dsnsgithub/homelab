@@ -44,7 +44,7 @@ spec:
           patches:
             # Previews must not fight prod for 10.3.3.11 (kube-vip ARPs the
             # same VIP from both Services). Give mc-proxy a per-PR IP in the
-            # reserved 10.3.3.240-249 range. Target by name so ClusterIP
+            # reserved 10.3.3.30-39 range. Target by name so ClusterIP
             # Services (v2ray, limbo) without loadBalancerIP still sync.
             - target:
                 kind: Service
@@ -52,7 +52,7 @@ spec:
               patch: |-
                 - op: replace
                   path: /spec/loadBalancerIP
-                  value: "10.3.3.{{ add 240 (mod (atoi (printf \"%v\" .number)) 10) }}"
+                  value: "10.3.3.{{ add 30 (mod (atoi (printf \"%v\" .number)) 10) }}"
       destination:
         server: https://kubernetes.default.svc
         namespace: "{{.path.basename}}-pr-{{.number}}"
