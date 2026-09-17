@@ -1,0 +1,8 @@
+[tools]
+age = "latest"
+"aqua:postfinance/topf" = "latest"
+argocd = "latest"
+kubectl = "latest"
+kubeseal = "latest"
+sops = "latest"
+talos = "latest"

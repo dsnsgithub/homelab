@@ -1,4 +1,4 @@
 apiVersion: v1alpha1
 kind: HostnameConfig
-hostname: talos-m2
-auto: off
+auto: "off"
+hostname: {{ .Node.Host }}
