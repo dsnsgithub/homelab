@@ -1,0 +1,28 @@
+# Template only - DO NOT commit a real secret here.
+#
+# Command:
+# kubeseal --format yaml --controller-name sealed-secrets-controller --controller-namespace kube-system < infra/argocd-notifications/github-token.plain.yaml > infra/argocd-notifications/github-token.sealed.yaml
+# Then add `github-token.sealed.yaml` to kustomization.yaml resources.
+#
+# Reuse the same GitHub PAT value as github-pr-generator-token, but it needs
+# `repo` scope (not just public_repo read) so argocd-notifications can POST
+# PR comments via the GitHub API.
+#
+# Plain file shape (infra/argocd-notifications/github-token.plain.yaml):
+#   apiVersion: v1
+#   kind: Secret
+#   metadata:
+#     name: argocd-notifications-secret
+#     namespace: argocd
+#   type: Opaque
+#   stringData:
+#     github-token: REPLACE_ME_GITHUB_TOKEN_WITH_REPO_SCOPE
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-notifications-secret
+  namespace: argocd
+type: Opaque
+stringData:
+  github-token: REPLACE_ME_GITHUB_TOKEN_WITH_REPO_SCOPE

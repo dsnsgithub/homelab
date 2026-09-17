@@ -29,6 +29,8 @@ spec:
   template:
     metadata:
       name: "{{.path.basename}}-pr-{{.number}}"
+      annotations:
+        notifications.argoproj.io/subscribe.on-preview-synced.github-api: ""
       finalizers:
         - resources-finalizer.argocd.argoproj.io
     spec:
@@ -39,6 +41,18 @@ spec:
         path: "{{.path.path}}"
         kustomize:
           namespace: "{{.path.basename}}-pr-{{.number}}"
+          patches:
+            # Previews must not fight prod for 10.3.3.11 (kube-vip ARPs the
+            # same VIP from both Services). Give mc-proxy a per-PR IP in the
+            # reserved 10.3.3.240-249 range. Target by name so ClusterIP
+            # Services (v2ray, limbo) without loadBalancerIP still sync.
+            - target:
+                kind: Service
+                name: mc-proxy-service
+              patch: |-
+                - op: replace
+                  path: /spec/loadBalancerIP
+                  value: "10.3.3.{{ add 240 (mod (atoi (printf \"%v\" .number)) 10) }}"
       destination:
         server: https://kubernetes.default.svc
         namespace: "{{.path.basename}}-pr-{{.number}}"
