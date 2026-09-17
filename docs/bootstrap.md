@@ -61,7 +61,7 @@ kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/latest/
 
 For every `*.TEMPLATE.yaml` file, run the command in the template comment to seal it, and commit only the sealed output.
 
-The currently sealed inputs are the Cloudflare token (`infra/cert-manager/cloudflare-secret.sealed.yaml`), the Minecraft config (`apps/minecraft/velocity-secret.sealed.yaml`), and the V2Ray config (`apps/v2ray/v2ray-secret.sealed.yaml`).
+The currently sealed inputs are the Cloudflare token (`infra/cert-manager/cloudflare-secret.sealed.yaml`), the Minecraft config (`apps/minecraft/velocity-secret.sealed.yaml`), the V2Ray config (`apps/v2ray/v2ray-secret.sealed.yaml`), and the GitHub PR generator token (`argocd/apps/github-pr-generator-token.sealed.yaml`).
 
 ## 5. Deploy the Root App
 

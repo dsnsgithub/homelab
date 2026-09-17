@@ -1,0 +1,14 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: github-pr-generator-token
+  namespace: argocd
+spec:
+  encryptedData:
+    token: AgBr80NklKFj0zVcCcBUK7o8NecufaGc+yqWyYYOF3T9yKObSdPT7XI9lb0mmBE9oOA5vEBUFg42FTeBGsPyz1ftR1MvBPMCEZVs6wNPXryiDP0+Lz3vczHW+SxZNMu7Um7a0cRvEplWYbUmPX32Mo/qTRdVPzYsKUKkJH3IufHdMYn6UYaU/Ov24EHoTp7UVcu3dgkq/h0IlcQiNVBhqSAy+9P5CJsTk76uIskcOLh9UqIsqT0whiAWITqG7vNsxSto4OHCnoSzgwNwU79GiF+l49h/IKEBsi9+edFdmelG7Mz6bWC/+i8HBd9MB1eKvIIGtfFIhxaYDyRIP+toFfcwRPaBKjtC1yKTkZ8nmkpO3L5MAiz3YRlhKyTYZ4n42hSdYLHdSu1eow8dltV9vavWNfXEmclymuV9R11Fs3LfuRM/ALY/EAdwtdiItbo6CJeD+TwZSBV93SmInEB8QjP4LNdQYzJcZLarX6DVwpj+gMU58URveX2NQJyQO1TNcVenWUD1+1ff+wpcmQEfaiev8u8HZOR6WT/N0vMVuyfaBHVXF+BzRSO6l2xkeSFUqm5wioEj1PW2mDbSfRqwa7Z/p4eiFFiXZaUZRnjJkBnb4Dw7oE3JHSOWbUp6njb9+5mZGJv5D6bQM1QEFTVHD7tk5GXYlK7qyysJSWPPRIXFT6PtiM6TC5PrACxfzwJKtY53ZKUuolD1fzWbSpkhxYz6LrYS4aL2yZYNfB4fRGCMQQolCcnpaAHD9kpgE3Sz/UL/9vWnum3eyidRHk5PyDknIO2y2CI6tPTSD0qsJF/jJqOcizOSLXr/E2aOZu1S
+  template:
+    metadata:
+      name: github-pr-generator-token
+      namespace: argocd
+    type: Opaque
