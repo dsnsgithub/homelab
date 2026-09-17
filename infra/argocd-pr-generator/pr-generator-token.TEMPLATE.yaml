@@ -1,7 +1,7 @@
 # Template only - DO NOT commit a real secret here.
 
 # Command:
-# kubeseal --format yaml --controller-name sealed-secrets-controller --controller-namespace kube-system < argocd/apps/github-pr-generator-token.plain.yaml > argocd/apps/github-pr-generator-token.sealed.yaml
+# kubeseal --format yaml --controller-name sealed-secrets-controller --controller-namespace kube-system < infra/argocd-pr-generator/pr-generator-token.plain.yaml > infra/argocd-pr-generator/pr-generator-token.sealed.yaml
 # Replace REPLACE_ME_GITHUB_TOKEN with a GitHub PAT (public_repo read scope is enough, since this repo is public).
 
 apiVersion: v1
