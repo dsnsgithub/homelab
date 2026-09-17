@@ -1,6 +1,3 @@
-# Default values for argocd-pr-generator chart.
-# GitHub token itself lives in templates/sealedsecret.yaml (SealedSecret).
-
 github:
   owner: dsnsgithub
   repo: homelab
@@ -12,7 +9,7 @@ github:
 generator:
   requeueAfterSeconds: 120
   repoURL: https://github.com/dsnsgithub/homelab.git
-  # Directories scanned for preview apps. web-proxy is excluded (shared routing).
+  # web-proxy is excluded (shared routing).
   directories:
     - path: apps/*
     - path: apps/web-proxy

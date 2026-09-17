@@ -1,6 +1,3 @@
-# Default values for cert-manager-config chart.
-# Cloudflare API token itself lives in templates/sealedsecret.yaml (SealedSecret).
-
 clusterIssuer:
   name: letsencrypt-prod
   email: dominic@seung.dev

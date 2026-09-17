@@ -1,4 +1,3 @@
-# Default values for argocd-server-lb chart.
 service:
   type: LoadBalancer
   loadBalancerIP: 10.3.3.9

@@ -1,10 +1,3 @@
-# Default values for web-proxy chart.
-#
-# Static LAN backends are exposed as headless Services + EndpointSlices.
-# In-cluster backends (e.g. v2ray) use ExternalName services.
-# IngressRoutes assume the Traefik `websecure` entrypoint.
-
-# Static (LAN IP) backends: Service + EndpointSlice pairs.
 staticBackends:
   - name: max-proxy
     port: 80
@@ -22,7 +15,6 @@ staticBackends:
     addresses:
       - 10.3.3.172
 
-# ExternalName backends for in-cluster services.
 externalBackends:
   - name: vray
     externalName: v2ray-service.v2ray-vpn.svc.cluster.local

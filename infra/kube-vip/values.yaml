@@ -1,12 +1,8 @@
-# Default values for kube-vip chart.
-# Runs on control-plane nodes in hostNetwork, managing Service LoadBalancer IPs.
-
 image:
   repository: ghcr.io/kube-vip/kube-vip
   tag: v1.0.4
   pullPolicy: Always
 
-# Environment mirrors the previous static manifest.
 settings:
   vipArp: "true"
   vipInterface: ""

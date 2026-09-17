@@ -1,7 +1,3 @@
-# Default values for minecraft chart.
-# Sealed secret (velocity-forwarding-secret) is rendered from
-# templates/sealedsecret.yaml and is NOT configurable via values.
-
 replicaCount: 2
 
 images:

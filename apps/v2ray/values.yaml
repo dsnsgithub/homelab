@@ -1,7 +1,3 @@
-# Default values for v2ray chart.
-# Client UUID is stored in the SealedSecret rendered from
-# templates/sealedsecret.yaml and is NOT configurable via values.
-
 replicaCount: 2
 
 images:
