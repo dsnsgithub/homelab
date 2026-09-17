@@ -1,0 +1,20 @@
+{{- range .Values.ingressRoutes }}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "web-proxy.labels" $ | nindent 4 }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: {{ .match }}
+      kind: Rule
+      services:
+        - name: {{ .serviceName }}
+          port: {{ .servicePort }}
+  tls:
+    secretName: {{ .tlsSecret }}
+---
+{{- end }}

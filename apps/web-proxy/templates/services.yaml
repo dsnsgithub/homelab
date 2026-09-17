@@ -1,0 +1,50 @@
+{{- range .Values.staticBackends }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "web-proxy.labels" $ | nindent 4 }}
+spec:
+  ports:
+    - name: http
+      port: {{ .port }}
+      targetPort: {{ .targetPort }}
+      protocol: TCP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: {{ .name }}
+  labels:
+    kubernetes.io/service-name: {{ .name }}
+    {{- include "web-proxy.labels" $ | nindent 4 }}
+addressType: IPv4
+ports:
+  - name: http
+    port: {{ .port }}
+    protocol: TCP
+endpoints:
+  - addresses:
+      {{- range .addresses }}
+      - {{ . | quote }}
+      {{- end }}
+---
+{{- end }}
+{{- range .Values.externalBackends }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "web-proxy.labels" $ | nindent 4 }}
+spec:
+  type: ExternalName
+  externalName: {{ .externalName }}
+  ports:
+    - name: http
+      port: {{ .port }}
+      targetPort: {{ .targetPort }}
+      protocol: TCP
+---
+{{- end }}

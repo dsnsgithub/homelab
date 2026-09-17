@@ -1,0 +1,20 @@
+# Default values for v2ray chart.
+# Client UUID is stored in the SealedSecret rendered from
+# templates/sealedsecret.yaml and is NOT configurable via values.
+
+replicaCount: 2
+
+images:
+  v2ray: v2fly/v2fly-core
+  busybox: busybox:latest
+
+server:
+  port: 10086
+  alterId: 64
+  websocketPath: /dsns
+  dnsServers:
+    - https://dns.adguard.com
+
+service:
+  type: ClusterIP
+  port: 10086

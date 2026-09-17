@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: v2ray-service
+  labels:
+    {{- include "v2ray.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app: v2ray
+  ports:
+  - name: v2ray
+    port: {{ .Values.service.port }}
+    targetPort: {{ .Values.server.port }}

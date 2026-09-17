@@ -1,0 +1,45 @@
+# Default values for minecraft chart.
+# Sealed secret (velocity-forwarding-secret) is rendered from
+# templates/sealedsecret.yaml and is NOT configurable via values.
+
+replicaCount: 2
+
+images:
+  proxy: itzg/mc-proxy:java25
+  limbo: ghcr.io/quozul/picolimbo:latest
+  busybox: busybox:latest
+  alpine: alpine:latest
+
+mcProxy:
+  minecraftVersion: "26.2"
+  modrinthProjects: |
+    velocity-limbo-handler
+    simple-voice-chat:alpha
+  containerPort: 25577
+  service:
+    type: LoadBalancer
+    loadBalancerIP: 10.3.3.11
+    minecraftPort: 25565
+    voiceChatPort: 25577
+
+limbo:
+  containerPort: 25565
+  servicePort: 25565
+  spawnSchematicURL: https://github.com/LOOHP/Limbo/raw/refs/heads/master/spawn.schem
+
+velocity:
+  # NOTE: single-quoted so \n stays a literal backslash-n for TOML (a real
+  # newline here would break the ConfigMap block scalar).
+  motd: '<gold>mc.dsns.dev\n<gray>SMP, Archive, and more'
+  showMaxPlayers: 500
+  servers:
+    limbo: limbo-service:25565
+    afk: limbo-service:25565
+    lobby: 10.3.3.188:25565
+    try:
+      - lobby
+      - limbo
+
+limboConfig:
+  welcomeMessage: "Type /server [name] to move between servers!"
+  actionBar: "Welcome to mc.dsns.dev!"

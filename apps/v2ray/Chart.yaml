@@ -1,0 +1,11 @@
+apiVersion: v2
+name: v2ray
+description: V2Ray VPN (vmess over websocket)
+type: application
+version: 0.1.0
+appVersion: latest
+keywords:
+  - vpn
+  - v2ray
+maintainers:
+  - name: homelab

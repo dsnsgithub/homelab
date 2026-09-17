@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mc-proxy
+  labels:
+    {{- include "minecraft.labels" . | nindent 4 }}
+    app: mc-proxy
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: mc-proxy
+  template:
+    metadata:
+      labels:
+        app: mc-proxy
+    spec:
+      initContainers:
+      - name: init-configs
+        image: {{ .Values.images.busybox }}
+        command: ['sh', '-c', 'cp /config-template/velocity.toml /server/velocity.toml && cp /forwarding-secret/forwarding.secret /server/forwarding.secret']
+        volumeMounts:
+        - name: server-data
+          mountPath: /server
+        - name: velocity-config-template
+          mountPath: /config-template
+        - name: forwarding-secret
+          mountPath: /forwarding-secret
+      containers:
+      - name: proxy
+        image: {{ .Values.images.proxy }}
+        env:
+        - name: TYPE
+          value: "VELOCITY"
+        - name: MINECRAFT_VERSION
+          value: {{ .Values.mcProxy.minecraftVersion | quote }}
+        - name: MODRINTH_PROJECTS
+          value: |
+            {{- .Values.mcProxy.modrinthProjects | nindent 12 }}
+        ports:
+        - containerPort: {{ .Values.mcProxy.containerPort }}
+          name: velocity
+        - containerPort: {{ .Values.mcProxy.containerPort }}
+          protocol: UDP
+          name: voice-chat
+        volumeMounts:
+        - name: server-data
+          mountPath: /server
+        stdin: true
+        tty: true
+      volumes:
+      - name: server-data
+        emptyDir: {}
+      - name: velocity-config-template
+        configMap:
+          name: velocity-config
+          items:
+          - key: velocity.toml
+            path: velocity.toml
+      - name: forwarding-secret
+        secret:
+          secretName: velocity-forwarding-secret
+          items:
+          - key: forwarding.secret
+            path: forwarding.secret

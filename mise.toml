@@ -2,6 +2,7 @@
 age = "latest"
 "aqua:postfinance/topf" = "latest"
 argocd = "latest"
+helm = "latest"
 kubectl = "latest"
 kubeseal = "latest"
 sops = "latest"

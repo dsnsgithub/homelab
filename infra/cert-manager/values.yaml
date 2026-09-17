@@ -1,0 +1,11 @@
+# Default values for cert-manager-config chart.
+# Cloudflare API token itself lives in templates/sealedsecret.yaml (SealedSecret).
+
+clusterIssuer:
+  name: letsencrypt-prod
+  email: dominic@seung.dev
+  server: https://acme-v02.api.letsencrypt.org/directory
+  privateKeySecretRef: letsencrypt-prod-key
+  cloudflareSecret:
+    name: cloudflare-api-token
+    key: api-token

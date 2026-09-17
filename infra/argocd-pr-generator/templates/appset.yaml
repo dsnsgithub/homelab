@@ -1,0 +1,49 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: preview-deploy
+  labels:
+    {{- include "argocd-pr-generator.labels" . | nindent 4 }}
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - pullRequest:
+              github:
+                owner: {{ .Values.github.owner }}
+                repo: {{ .Values.github.repo }}
+                tokenRef:
+                  secretName: {{ .Values.github.secretName }}
+                  key: {{ .Values.github.secretKey }}
+                labels:
+                  {{- range .Values.github.labels }}
+                  - {{ . }}
+                  {{- end }}
+              requeueAfterSeconds: {{ .Values.generator.requeueAfterSeconds }}
+          - git:
+              repoURL: {{ .Values.generator.repoURL }}
+              revision: "{{`{{.head_sha}}`}}"
+              directories:
+                {{- toYaml .Values.generator.directories | nindent 16 }}
+  template:
+    metadata:
+      name: "{{`{{.path.basename}}-pr-{{.number}}`}}"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: default
+      source:
+        repoURL: {{ .Values.generator.repoURL }}
+        targetRevision: "{{`{{.head_sha}}`}}"
+        path: "{{`{{.path.path}}`}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{`{{.path.basename}}-pr-{{.number}}`}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

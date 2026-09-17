@@ -1,0 +1,18 @@
+{{- range .Values.certificates }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "web-proxy.labels" $ | nindent 4 }}
+spec:
+  secretName: {{ .secretName }}
+  dnsNames:
+    {{- range .dnsNames }}
+    - {{ . | quote }}
+    {{- end }}
+  issuerRef:
+    name: {{ $.Values.certIssuerRef.name }}
+    kind: {{ $.Values.certIssuerRef.kind }}
+---
+{{- end }}

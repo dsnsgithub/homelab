@@ -1,0 +1,11 @@
+apiVersion: v2
+name: minecraft
+description: Minecraft Velocity proxy + Limbo lobby/afk backend
+type: application
+version: 0.1.0
+appVersion: "26.2"
+keywords:
+  - minecraft
+  - velocity
+maintainers:
+  - name: homelab

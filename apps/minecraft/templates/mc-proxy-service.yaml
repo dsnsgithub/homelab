@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mc-proxy-service
+  labels:
+    {{- include "minecraft.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.mcProxy.service.type }}
+  loadBalancerIP: {{ .Values.mcProxy.service.loadBalancerIP | quote }}
+  selector:
+    app: mc-proxy
+  ports:
+  - name: minecraft
+    port: {{ .Values.mcProxy.service.minecraftPort }}
+    targetPort: {{ .Values.mcProxy.containerPort }}
+  - name: voice-chat
+    port: {{ .Values.mcProxy.service.voiceChatPort }}
+    protocol: UDP
+    targetPort: {{ .Values.mcProxy.containerPort }}

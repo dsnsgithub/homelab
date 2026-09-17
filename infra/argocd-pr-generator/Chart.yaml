@@ -1,0 +1,8 @@
+apiVersion: v2
+name: argocd-pr-generator
+description: ApplicationSet generating preview envs for PRs labeled `preview`
+type: application
+version: 0.1.0
+appVersion: "1.0"
+maintainers:
+  - name: homelab

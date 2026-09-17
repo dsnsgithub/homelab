@@ -1,0 +1,78 @@
+# Default values for web-proxy chart.
+#
+# Static LAN backends are exposed as headless Services + EndpointSlices.
+# In-cluster backends (e.g. v2ray) use ExternalName services.
+# IngressRoutes assume the Traefik `websecure` entrypoint.
+
+# Static (LAN IP) backends: Service + EndpointSlice pairs.
+staticBackends:
+  - name: max-proxy
+    port: 80
+    targetPort: 80
+    addresses:
+      - 10.3.3.218
+  - name: code
+    port: 7799
+    targetPort: 7799
+    addresses:
+      - 10.3.3.195
+  - name: immich
+    port: 2283
+    targetPort: 2283
+    addresses:
+      - 10.3.3.172
+
+# ExternalName backends for in-cluster services.
+externalBackends:
+  - name: vray
+    externalName: v2ray-service.v2ray-vpn.svc.cluster.local
+    port: 10086
+    targetPort: 10086
+
+certIssuerRef:
+  name: letsencrypt-prod
+  kind: ClusterIssuer
+
+certificates:
+  - name: wildcard-dsns-dev
+    secretName: dsns-wildcard-tls
+    dnsNames:
+      - dsns.dev
+      - "*.dsns.dev"
+  - name: wildcard-mseung-dev
+    secretName: mseung-wildcard-tls
+    dnsNames:
+      - mseung.dev
+      - "*.mseung.dev"
+  - name: wildcard-seung-dev
+    secretName: seung-wildcard-tls
+    dnsNames:
+      - seung.dev
+      - "*.seung.dev"
+
+ingressRoutes:
+  - name: wildcard-mseung-dev
+    match: "HostRegexp(`.+\\.mseung\\.dev`)"
+    serviceName: max-proxy
+    servicePort: 80
+    tlsSecret: mseung-wildcard-tls
+  - name: wildcard-seung-dev
+    match: "HostRegexp(`.+\\.seung\\.dev`)"
+    serviceName: max-proxy
+    servicePort: 80
+    tlsSecret: seung-wildcard-tls
+  - name: code-dsns-dev
+    match: "Host(`code.dsns.dev`)"
+    serviceName: code
+    servicePort: 7799
+    tlsSecret: dsns-wildcard-tls
+  - name: immich-dsns-dev
+    match: "Host(`immich.dsns.dev`)"
+    serviceName: immich
+    servicePort: 2283
+    tlsSecret: dsns-wildcard-tls
+  - name: vray-dsns-dev
+    match: "Host(`vray.dsns.dev`)"
+    serviceName: vray
+    servicePort: 10086
+    tlsSecret: dsns-wildcard-tls

@@ -1,0 +1,11 @@
+apiVersion: v2
+name: kube-vip
+description: kube-vip DaemonSet for LoadBalancer IPs (Arp mode, services only)
+type: application
+version: 0.1.0
+appVersion: v1.0.4
+keywords:
+  - networking
+  - loadbalancer
+maintainers:
+  - name: homelab

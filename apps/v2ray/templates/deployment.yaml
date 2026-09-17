@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: v2ray
+  labels:
+    {{- include "v2ray.labels" . | nindent 4 }}
+    app: v2ray
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: v2ray
+  template:
+    metadata:
+      labels:
+        app: v2ray
+    spec:
+      initContainers:
+      - name: render-config
+        image: {{ .Values.images.busybox }}
+        command: ['sh', '-c', 'ID=$(cat /v2ray-id/id); sed "s/__V2RAY_ID__/${ID}/g" /config-template/config.json > /rendered-config/config.json']
+        volumeMounts:
+        - name: v2ray-config
+          mountPath: /rendered-config
+        - name: v2ray-config-template
+          mountPath: /config-template
+        - name: v2ray-id
+          mountPath: /v2ray-id
+      containers:
+      - name: v2ray
+        image: {{ .Values.images.v2ray }}
+        args:
+        - run
+        - -c
+        - /etc/v2ray/config.json
+        volumeMounts:
+        - name: v2ray-config
+          mountPath: /etc/v2ray/config.json
+          subPath: config.json
+        stdin: true
+        tty: true
+      volumes:
+      - name: v2ray-config
+        emptyDir: {}
+      - name: v2ray-config-template
+        configMap:
+          name: v2ray-config
+          items:
+          - key: config.json
+            path: config.json
+      - name: v2ray-id
+        secret:
+          secretName: v2ray-id
+          items:
+          - key: id
+            path: id

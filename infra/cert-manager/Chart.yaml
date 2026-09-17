@@ -1,0 +1,8 @@
+apiVersion: v2
+name: cert-manager-config
+description: ClusterIssuer (Let's Encrypt + Cloudflare DNS01) and API token
+type: application
+version: 0.1.0
+appVersion: "1.0"
+maintainers:
+  - name: homelab
