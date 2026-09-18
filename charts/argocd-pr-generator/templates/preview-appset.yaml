@@ -1,0 +1,52 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: preview-deploy
+  namespace: {{ .Values.namespace }}
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - pullRequest:
+              github:
+                owner: dsnsgithub
+                repo: homelab
+                tokenRef:
+                  secretName: github-pr-generator-token
+                  key: token
+                labels:
+                  - preview
+              requeueAfterSeconds: 120
+          - git:
+              repoURL: https://github.com/dsnsgithub/homelab.git
+              revision: "{{ include "argocd-pr-generator.gotpl" ".head_sha" }}"
+              directories:
+                - path: charts/minecraft
+                - path: charts/v2ray
+                - path: charts/web-proxy
+                  exclude: true
+  template:
+    metadata:
+      name: "{{ include "argocd-pr-generator.gotpl" ".path.basename" }}-pr-{{ include "argocd-pr-generator.gotpl" ".number" }}"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/dsnsgithub/homelab.git
+        targetRevision: "{{ include "argocd-pr-generator.gotpl" ".head_sha" }}"
+        path: "{{ include "argocd-pr-generator.gotpl" ".path.path" }}"
+        helm:
+          valuesObject:
+            namespace: "{{ include "argocd-pr-generator.gotpl" ".path.basename" }}-pr-{{ include "argocd-pr-generator.gotpl" ".number" }}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{ include "argocd-pr-generator.gotpl" ".path.basename" }}-pr-{{ include "argocd-pr-generator.gotpl" ".number" }}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

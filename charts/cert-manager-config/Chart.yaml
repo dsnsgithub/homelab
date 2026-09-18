@@ -1,0 +1,5 @@
+apiVersion: v2
+name: cert-manager-config
+description: cert-manager ClusterIssuer and Cloudflare API credentials
+type: application
+version: 0.1.0

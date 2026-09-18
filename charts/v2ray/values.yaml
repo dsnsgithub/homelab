@@ -1,0 +1,53 @@
+namespace: v2ray-vpn
+createNamespace: true
+
+replicas: 2
+
+image: v2fly/v2fly-core
+
+service:
+  port: 10086
+
+config: |
+  {
+    "dns": {
+      "servers": [
+        "https://dns.adguard.com"
+      ]
+    },
+    "inbounds": [
+      {
+        "port": 10086,
+        "protocol": "vmess",
+        "settings": {
+          "clients": [
+            {
+              "alterId": 64,
+              "id": "__V2RAY_ID__"
+            }
+          ]
+        },
+        "streamSettings": {
+          "network": "ws",
+          "security": "none",
+          "wsSettings": {
+            "path": "/dsns"
+          }
+        }
+      }
+    ],
+    "outbounds": [
+      {
+        "protocol": "freedom",
+        "settings": {}
+      }
+    ]
+  }
+
+sealedSecret:
+  # Template only - DO NOT commit a real secret here.
+  # Re-seal a generated client UUID and paste the output into encryptedData:
+  #   kubeseal --format yaml --controller-name sealed-secrets-controller \
+  #     --controller-namespace kube-system < v2ray.plain.yaml | grep -A1 'id:'
+  encryptedData:
+    id: AgAARoswmwxFOScwWIxQrdlbq+32/OJrZXAgBEMf27NQ9pWVIXqH4QyCII1Ae6onxC1qosFWAWagWsEmP2dq899+bwHuhK6k27j/37+hsyZHT3gzrHB0awi87nwIu9+7DxkXcx/mI6+Mwqk/Z2VMmMyEGC1c0sFhd4w0scPk7gMooR69+ZKV5JRjrlnjmw50o6PcODvC0YM/p8KLzjE4vfb7IHslbcJ5D7tMkgttNtZNUjSXR6D8V5WX9s6t4i7fHILN+zTkvX2BX1NVzKnVn9QAgeXnl+E9ulgK+h484/kCeHDo7FG5nMh+dS7FgQWtA1HTf3Nh6r6VSa31aBvq68BxvImxQBgd0k9TA67pOXVcKkc2agyHzYqlsViUALIPAHCMb4mNR8RgUM/Icpkyon9BcAnJQNha9QynMBloMKDtC8mPdkUEgahTftt2iKNvKayX8BdLZIMUF0M5GG3RwUwWSoMc3d3SAMPqiN9t5nYxwZyvtOmrpW+PyWjpEmIZoJx/oD67EAvMaNArY9DJxwBbIVkt2JZSyJvP5SckAoZDNOuDKkA4/TxGabdYZZsMlSRl2cXSMrhQfkr3kh2GNdHKZe2dCRoFKuYEFh4E7PnTyPrUj5PZ4Q54cfIJOZFeH6eBq3brxAIvUxR4XOwrkvaxIu72iPU7S55TyRPBxNmC8XeCQOCrdklwxk3+m3BUGk9/ckIVf3/iUzy9oe0UkvjUl8uPSakbLLn+C9ZPCjDvuCPXRJvu

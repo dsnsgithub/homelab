@@ -1,0 +1,117 @@
+namespace: minecraft
+createNamespace: true
+
+replicas: 2
+
+mcProxy:
+  image: itzg/mc-proxy:java25
+  port: 25577
+  env:
+    TYPE: VELOCITY
+    MINECRAFT_VERSION: "26.2"
+    MODRINTH_PROJECTS:
+      - velocity-limbo-handler
+      - simple-voice-chat:alpha
+
+limbo:
+  image: ghcr.io/quozul/picolimbo:latest
+
+service:
+  loadBalancerIP: 10.3.3.11
+  mcProxyPort: 25565
+  voiceChatPort: 25577
+  limboPort: 25565
+
+velocityConfig:
+  velocityToml: |
+    config-version = "2.8"
+    bind = "0.0.0.0:25577"
+    motd = "<gold>mc.dsns.dev\n<gray>SMP, Archive, and more"
+    show-max-players = 500
+    online-mode = true
+    force-key-authentication = true
+    prevent-client-proxy-connections = false
+    player-info-forwarding-mode = "MODERN"
+    forwarding-secret-file = "forwarding.secret"
+    announce-forge = false
+    kick-existing-players = false
+    ping-passthrough = "DISABLED"
+    enable-player-address-logging = true
+
+    [servers]
+    limbo = "limbo-service:25565"
+    afk = "limbo-service:25565"
+    lobby = "10.3.3.188:25565"
+    try = ["lobby", "limbo"]
+
+    [forced-hosts]
+
+    [advanced]
+    compression-threshold = 256
+    compression-level = -1
+    login-ratelimit = 3000
+    connection-timeout = 5000
+    read-timeout = 30000
+    haproxy-protocol = false
+    tcp-fast-open = false
+    bungee-plugin-message-channel = true
+    show-ping-requests = false
+    failover-on-unexpected-server-disconnect = true
+    announce-proxy-commands = true
+    log-command-executions = false
+    log-player-connections = true
+    accepts-transfers = false
+
+    [query]
+    enabled = false
+    port = 25577
+    map = "Velocity"
+    show-plugins = false
+
+    [packet-limiter]
+    interval = 7
+    packets-per-second = -1
+    bytes-per-second = -1
+    decompressed-bytes-per-second = 5242880
+  serverToml: |
+    welcome_message = "Type /server [name] to move between servers!"
+    action_bar = "Welcome to mc.dsns.dev!"
+
+    default_game_mode = "survival"
+
+    [forwarding]
+    method = "MODERN"
+    secret = "${VELOCITY_FORWARDING_SECRET}"
+
+    [tab_list]
+    enabled = false
+    player_listed = true
+
+    [boss_bar]
+    enabled = true
+    color = "blue"
+    division = 0
+    health = 1.0
+    title = "<blue><bold>Type /server [name] to move between servers!</bold></blue>"
+
+    [title]
+    enabled = false
+
+    [world]
+    spawn_position = [19.5, 16.0, 22.5]
+    spawn_rotation = [-90.0, 0.0]
+    dimension = "overworld"
+    time = "day"
+
+    [world.experimental]
+    view_distance = 4
+    schematic_file = "spawn.schem"
+    lock_time = true
+
+sealedSecret:
+  # Template only - DO NOT commit a real secret here.
+  # Re-seal a generated Velocity forwarding secret and paste the output into encryptedData:
+  #   kubeseal --format yaml --controller-name sealed-secrets-controller \
+  #     --controller-namespace kube-system < minecraft.plain.yaml | grep -A1 'forwarding.secret'
+  encryptedData:
+    forwarding.secret: AgAvC5BTRPZj6finP45ZIJtAaB21yoW41NiD+cslBMz6siQw6lmUXPy2o1DhLIDFvI+CW95RHAexYbK1HyfTbiMGzbT50hCutKI1/t9+Adku527CMQAv6dSxQr412YRKWYjonzFDUWipTSQRCeR4Mo0mviDiV967aeSk/+oSy2XEgtW054rMCBmKZlZvj890n3XOppqlgl8AXtmi5+jVas9rMbkdn4TjrqEehkk5YIuuOYoBDzTdfRPnXRJgUSTRDdTqw/BVFq5YqpLlfrShmaXLrdFsjVJ6dEvJUTRDoE1NuRlMZo9QqvxRrJy8sBLIVY96YyKrKoqDcFP4mA+2a1KA8a6cn1Nrc1abgXtZs53mP8Y2547SEVNvzX8mK09UIq9P+KQ+BbXIAQA1Jnso+d9z8cI/w+YtRtmW3YNeIC0KhIu/uW0FzH59+IIrGOmB0UdSg4o2OgBULYYa8A/x45okb1GRVNHFpdUMLZ48CmYWx8haGXkg8RKnomSyg/PXiWT18d2oZz75UB2MUQfS8bWyuWl30UXuTO+os/yBoGJvfMFSUxl2R7Qfix6I2aJcLGSCk/O5kE9y4eY6phsDY2zI3ZDkCdWWI1JGNMtyAj9cz1ftAsOFdW3Nr+xveBX+4/AUDXrtasDZeQpj/x4MfAHpVZLB1mJuLDN1dAJLtGlnVnspTV0jm78GgwfJHC/EGE8u2p8/7gyoK4Ub7d4rxsfJV1Plw+GExzMErUHxXAPmlg==

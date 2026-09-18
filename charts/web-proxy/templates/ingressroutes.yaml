@@ -1,0 +1,19 @@
+{{- range .Values.ingressRoutes }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.namespace }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: {{ .match }}
+      kind: Rule
+      services:
+        - name: {{ .service }}
+          port: {{ .port }}
+  tls:
+    secretName: {{ .tlsSecret }}
+{{- end }}

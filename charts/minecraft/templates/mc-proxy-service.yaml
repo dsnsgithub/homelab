@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mc-proxy-service
+  namespace: {{ .Values.namespace }}
+spec:
+  type: LoadBalancer
+  loadBalancerIP: {{ .Values.service.loadBalancerIP }}
+  selector:
+    app: mc-proxy
+  ports:
+  - name: minecraft
+    port: {{ .Values.service.mcProxyPort }}
+    targetPort: {{ .Values.mcProxy.port }}
+  - name: voice-chat
+    port: {{ .Values.service.voiceChatPort }}
+    protocol: UDP
+    targetPort: {{ .Values.mcProxy.port }}

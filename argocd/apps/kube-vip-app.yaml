@@ -7,10 +7,16 @@ metadata:
     argocd.argoproj.io/sync-wave: "-10"
 spec:
   project: default
-  source:
-    repoURL: https://github.com/dsnsgithub/homelab.git
-    targetRevision: main
-    path: infra/kube-vip
+  sources:
+    - repoURL: https://kube-vip.github.io/helm-charts
+      chart: kube-vip
+      targetRevision: 0.11.1
+      helm:
+        valueFiles:
+          - $homelab/infra/kube-vip/values.yaml
+    - repoURL: https://github.com/dsnsgithub/homelab.git
+      targetRevision: main
+      ref: homelab
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system

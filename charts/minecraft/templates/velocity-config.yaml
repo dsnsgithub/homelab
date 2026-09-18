@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: velocity-config
+  namespace: {{ .Values.namespace }}
+data:
+  velocity.toml: |
+    {{- .Values.velocityConfig.velocityToml | nindent 4 }}
+  server.toml: |
+    {{- .Values.velocityConfig.serverToml | nindent 4 }}
