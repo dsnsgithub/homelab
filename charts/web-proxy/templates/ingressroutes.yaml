@@ -12,8 +12,8 @@ spec:
     - match: {{ .match }}
       kind: Rule
       services:
-        - kind: TraefikService
-          name: {{ .service }}
+        - name: {{ .service }}
+          port: {{ .port }}
   tls:
     secretName: {{ .tlsSecret }}
 {{- end }}
