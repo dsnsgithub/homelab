@@ -8,11 +8,6 @@ services:
     targetPort: 80
     endpoints:
       - 10.3.3.218
-  - name: code
-    port: 7799
-    targetPort: 7799
-    endpoints:
-      - 10.3.3.195
   - name: immich
     port: 2283
     targetPort: 2283
@@ -24,6 +19,9 @@ externalServices:
   - name: vray
     externalName: v2ray-service.v2ray-vpn.svc.cluster.local
     port: 10086
+  - name: code
+    externalName: t3-code-service.t3-code.svc.cluster.local
+    port: 7799
 
 ingressRoutes:
   - name: wildcard-mseung-dev

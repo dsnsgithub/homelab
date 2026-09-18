@@ -1,0 +1,29 @@
+namespace: t3-code
+createNamespace: true
+
+replicas: 1
+
+image: seungd/t3-code
+imagePullPolicy: Always
+
+service:
+  name: t3-code-service
+  port: 7799
+
+env:
+- name: IS_SANDBOX
+  value: "1"
+
+volumes:
+  data:
+    mountPath: /data
+    storageClass: longhorn
+    accessModes:
+    - ReadWriteOnce
+    size: 10Gi
+  repositories:
+    mountPath: /root/repositories
+    storageClass: longhorn
+    accessModes:
+    - ReadWriteOnce
+    size: 20Gi

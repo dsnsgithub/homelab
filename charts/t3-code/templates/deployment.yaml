@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: t3-code
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: t3-code
+  template:
+    metadata:
+      labels:
+        app: t3-code
+    spec:
+      containers:
+      - name: t3-code
+        image: {{ .Values.image }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        env:
+        {{- range .Values.env }}
+        - name: {{ .name }}
+          value: {{ .value | quote }}
+        {{- end }}
+        ports:
+        - containerPort: {{ .Values.service.port }}
+          name: http
+        volumeMounts:
+        {{- range $name, $spec := .Values.volumes }}
+        - name: {{ $name }}
+          mountPath: {{ $spec.mountPath }}
+        {{- end }}
+      volumes:
+      {{- range $name, $spec := .Values.volumes }}
+      - name: {{ $name }}
+        persistentVolumeClaim:
+          claimName: {{ $name }}
+      {{- end }}

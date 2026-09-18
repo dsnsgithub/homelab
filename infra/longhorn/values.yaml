@@ -1,0 +1,9 @@
+persistence:
+  defaultClass: true
+  defaultClassReplicaCount: 2
+  reclaimPolicy: Delete
+
+# Required for Argo CD installs: the pre-upgrade checker job races with Argo CD
+# synchronizing CRDs and must be disabled.
+preUpgradeChecker:
+  jobEnabled: false
