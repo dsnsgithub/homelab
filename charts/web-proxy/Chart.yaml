@@ -1,5 +1,5 @@
 apiVersion: v2
 name: web-proxy
-description: Traefik ingress routes, certificates, and TraefikService backends
+description: Traefik ingress routes, certificates, and external-VM service bridging
 type: application
 version: 0.1.0
