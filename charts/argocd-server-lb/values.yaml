@@ -1,0 +1,13 @@
+namespace: argocd
+createNamespace: false
+
+name: argocd-server-lb
+loadBalancerIP: 10.3.3.9
+
+ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  - name: https
+    port: 443
+    targetPort: 8080

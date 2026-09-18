@@ -1,0 +1,70 @@
+namespace: web-proxy
+createNamespace: true
+
+# Headless services backed by EndpointSlices pointing at bare-metal/VMs.
+services:
+  - name: max-proxy
+    port: 80
+    targetPort: 80
+    endpoints:
+      - 10.3.3.218
+  - name: code
+    port: 7799
+    targetPort: 7799
+    endpoints:
+      - 10.3.3.195
+  - name: immich
+    port: 2283
+    targetPort: 2283
+    endpoints:
+      - 10.3.3.172
+
+# Cluster-internal name-based services.
+externalServices:
+  - name: vray
+    externalName: v2ray-service.v2ray-vpn.svc.cluster.local
+    port: 10086
+
+ingressRoutes:
+  - name: wildcard-mseung-dev
+    match: HostRegexp(`.+\.mseung\.dev`)
+    service: max-proxy
+    port: 80
+    tlsSecret: mseung-wildcard-tls
+  - name: wildcard-seung-dev
+    match: HostRegexp(`.+\.seung\.dev`)
+    service: max-proxy
+    port: 80
+    tlsSecret: seung-wildcard-tls
+  - name: code-dsns-dev
+    match: Host(`code.dsns.dev`)
+    service: code
+    port: 7799
+    tlsSecret: dsns-wildcard-tls
+  - name: immich-dsns-dev
+    match: Host(`immich.dsns.dev`)
+    service: immich
+    port: 2283
+    tlsSecret: dsns-wildcard-tls
+  - name: vray-dsns-dev
+    match: Host(`vray.dsns.dev`)
+    service: vray
+    port: 10086
+    tlsSecret: dsns-wildcard-tls
+
+certificates:
+  - name: wildcard-dsns-dev
+    secretName: dsns-wildcard-tls
+    dnsNames:
+      - dsns.dev
+      - "*.dsns.dev"
+  - name: wildcard-mseung-dev
+    secretName: mseung-wildcard-tls
+    dnsNames:
+      - mseung.dev
+      - "*.mseung.dev"
+  - name: wildcard-seung-dev
+    secretName: seung-wildcard-tls
+    dnsNames:
+      - seung.dev
+      - "*.seung.dev"

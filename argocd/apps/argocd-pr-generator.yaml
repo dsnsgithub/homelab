@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/dsnsgithub/homelab.git
     targetRevision: main
-    path: infra/argocd-pr-generator
+    path: charts/argocd-pr-generator
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

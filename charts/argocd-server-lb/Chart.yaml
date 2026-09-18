@@ -1,0 +1,5 @@
+apiVersion: v2
+name: argocd-server-lb
+description: LoadBalancer Service for the Argo CD server
+type: application
+version: 0.1.0

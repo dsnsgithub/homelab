@@ -1,0 +1,10 @@
+namespace: argocd
+createNamespace: false
+
+sealedSecret:
+  # Template only - DO NOT commit a real secret here.
+  # Re-seal the GitHub PAT and paste the output into encryptedData:
+  #   kubeseal --format yaml --controller-name sealed-secrets-controller \
+  #     --controller-namespace kube-system < pr-generator-token.plain.yaml | grep -A1 'token:'
+  encryptedData:
+    token: AgCNSQx1Erx/1AGOJj++Fp8RfGBRafvS5a+5UQz5z4ODtqDg81tWvS2U8wiB2Kr12hd3xokARDAMkqkwcsUymlBDCcpCv5QGaLcuOcctFeWlTE/mdgeHMQW4oXIOZ5j1EeN9vjYitZ/dd2MArxoNFcS1epBX8ZS5c3LMAC3M464vuCfIexU3c8SsvBM+4oZL7sLkK3gyFeRe9GIGHskgeDq+gyWhhD5ANTto5aulfq60cvuSsoqqFsMhv6VDcuwUUyl4U9b/9SbaAv52ffn4yyY/AzBsc6c01WBbRj7q0705r41KRqoVHRIAqIo1pBYjWZ8cuPcsk1/imX5cObLf0Cn6wu4Pn7EXky+bBQqfLOTrxnDeybSa/9Y1RiXsL5p33dPPGueLUijGwrKsIpsbBDDTHr8ZW8/GntCbqRyoIBsQce+prI5GG24vy7V61E4h3fKu9s8yBYeY//Zoz7KRu4e6Sk3O286tO8DBP4KQ+MHJe7q+jOmlxypVVIl386DHo8wOMgNhFPSSJxPipNEfL/XzscPlWK7vEtIdctCfrLmaKDFbnw0l31gvgfOwKpGwgDxgWqqGWqJgQA2YNC8pP5cRVOzD0gzaso9v4FInb2Hgdm+1Z/TESKzs3hj8+QD2h/Qx6+S3sG0uUvDDYHmQRvGukgy8ANSCeusaFtUJ5AhudpHA52Z3xLdgHOwSpf5GJjEPXuv2DVvsGL6v8ikIGLnB12ch/jlBJ3ERCfl0pDwtq3lN2b/rI8E+1vWzh1U7nOFkoeADzpFxVtpnZ0TLyFIqCP8ezqv3KXEzexzCv4kohGZGc8i1ugyDElEqgQs=

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: minecraft
+description: Minecraft Velocity proxy (mc-proxy) and Limbo server
+type: application
+version: 0.1.0

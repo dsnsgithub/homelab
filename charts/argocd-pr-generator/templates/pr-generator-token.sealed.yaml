@@ -1,0 +1,14 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: github-pr-generator-token
+  namespace: {{ .Values.namespace }}
+spec:
+  encryptedData:
+    {{- toYaml .Values.sealedSecret.encryptedData | nindent 4 }}
+  template:
+    metadata:
+      name: github-pr-generator-token
+      namespace: {{ .Values.namespace }}
+    type: Opaque

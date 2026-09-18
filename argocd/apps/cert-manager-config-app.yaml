@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/dsnsgithub/homelab.git
     targetRevision: main
-    path: infra/cert-manager
+    path: charts/cert-manager-config
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager

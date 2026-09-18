@@ -59,9 +59,9 @@ The controller decrypts `SealedSecret` objects into regular Secrets at sync time
 kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/latest/download/controller.yaml
 ```
 
-For every `*.TEMPLATE.yaml` file, run the command in the template comment to seal it, and commit only the sealed output.
+For every sealed secret in the chart `values.yaml` files (under `sealedSecret:`), re-seal the plain input and paste the output into the chart's `encryptedData` before bootstrapping.
 
-The currently sealed inputs are the Cloudflare token (`infra/cert-manager/cloudflare-secret.sealed.yaml`), the Minecraft config (`apps/minecraft/velocity-secret.sealed.yaml`), the V2Ray config (`apps/v2ray/v2ray-secret.sealed.yaml`), and the GitHub PR generator token (`argocd/apps/github-pr-generator-token.sealed.yaml`).
+The currently sealed inputs are the Cloudflare token (`charts/cert-manager-config/values.yaml`), the Minecraft config (`charts/minecraft/values.yaml`), the V2Ray config (`charts/v2ray/values.yaml`), and the GitHub PR generator token (`charts/argocd-pr-generator/values.yaml`).
 
 ## 5. Deploy the Root App
 
