@@ -23,9 +23,16 @@ spec:
               repoURL: https://github.com/dsnsgithub/homelab.git
               revision: "{{ include "argocd-pr-generator.gotpl" ".head_sha" }}"
               directories:
-                - path: charts/minecraft
-                - path: charts/v2ray
-                - path: charts/web-proxy
+                - path: charts/*
+                # Infra charts are cluster-scoped or claim fixed VIPs
+                # (letsencrypt-prod ClusterIssuer, argocd LB 10.3.3.9, the
+                # ApplicationSet itself). They cannot be copied into an
+                # isolated preview namespace without colliding with prod.
+                - path: charts/argocd-pr-generator
+                  exclude: true
+                - path: charts/argocd-server-lb
+                  exclude: true
+                - path: charts/cert-manager-config
                   exclude: true
   template:
     metadata:
@@ -39,8 +46,24 @@ spec:
         targetRevision: "{{ include "argocd-pr-generator.gotpl" ".head_sha" }}"
         path: "{{ include "argocd-pr-generator.gotpl" ".path.path" }}"
         helm:
-          valuesObject:
+          # values (string) rather than valuesObject: Go template if/end
+          # blocks are valid here without breaking the outer YAML. Argo CD
+          # re-renders this block at generation time, then Helm parses it.
+          values: |
             namespace: "{{ include "argocd-pr-generator.gotpl" ".path.basename" }}-pr-{{ include "argocd-pr-generator.gotpl" ".number" }}"
+            {{ include "argocd-pr-generator.gotpl" "if eq .path.basename \"minecraft\"" }}
+            # Per-PR VIP in the reserved 10.3.3.30-39 range, so previews don't
+            # fight prod for 10.3.3.11 (kube-vip ARP conflict -> prod outage).
+            service:
+              loadBalancerIP: "10.3.3.{{ include "argocd-pr-generator.gotpl" "add 30 (mod (atoi (printf \"%v\" .number)) 10)" }}"
+            {{ include "argocd-pr-generator.gotpl" "end" }}
+            {{ include "argocd-pr-generator.gotpl" "if eq .path.basename \"web-proxy\"" }}
+            # Previews must not claim the prod wildcard hosts: duplicate
+            # IngressRoutes break Traefik routing and duplicate Certificates
+            # make cert-manager fight over the same wildcard DNS names.
+            certificates: []
+            ingressRoutes: []
+            {{ include "argocd-pr-generator.gotpl" "end" }}
       destination:
         server: https://kubernetes.default.svc
         namespace: "{{ include "argocd-pr-generator.gotpl" ".path.basename" }}-pr-{{ include "argocd-pr-generator.gotpl" ".number" }}"
