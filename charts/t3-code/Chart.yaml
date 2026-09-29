@@ -1,0 +1,5 @@
+apiVersion: v2
+name: t3-code
+description: T3 Code web IDE sandbox
+type: application
+version: 0.1.0
