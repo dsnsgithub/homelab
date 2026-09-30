@@ -1,0 +1,7 @@
+# Restore Talos control plane defaults after the shared scheduling patch.
+apiVersion: v1alpha1
+kind: KubeNodeConfig
+taints:
+  node-role.kubernetes.io/control-plane: ':NoSchedule'
+labels:
+  node.kubernetes.io/exclude-from-external-load-balancers: ""
