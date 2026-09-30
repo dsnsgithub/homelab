@@ -1,0 +1,4 @@
+# Keep previews off the production LoadBalancer IP.
+service:
+  type: ClusterIP
+  loadBalancerIP: ""

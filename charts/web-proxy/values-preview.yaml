@@ -1,0 +1,3 @@
+# Preview Services without claiming production hostnames or certificates.
+certificates: []
+ingressRoutes: []
