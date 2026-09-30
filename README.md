@@ -5,7 +5,7 @@ This repository builds and operates my Kubernetes cluster. Argo CD installs/sync
 Anything that isn't colored in the diagram can be changed, as this homelab is platform agnostic. The architecture will continue to evolve as I migrate more applications.
 
 ## Architecture
-<img width="800" alt="homelab" src="https://github.com/user-attachments/assets/26417614-4b7c-4b8f-9e7d-741b91777660" />
+<img width="800" alt="homelab" src="https://github.com/user-attachments/assets/25a4e163-f85c-4305-9ed4-04bc50ed634f" />
 
 
 ## Quickstart
