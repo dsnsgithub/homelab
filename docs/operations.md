@@ -13,6 +13,16 @@ Replace `32` with the PR number. Port forwarding supports TCP only, so UDP voice
 chat requires access from inside the cluster. Rebase older PRs to include the
 configurable Service type; their production VIP is cleared until then.
 
+## Control Plane Scheduling
+
+`talos-m2` uses the default control plane taint (`node-role.kubernetes.io/control-plane:NoSchedule`) and is excluded from external load balancers. `talos-m4` and `talos-raider` remain control plane nodes with those defaults removed so they can run workloads.
+
+Apply Talos configuration changes with:
+
+```bash
+topf --topfconfig talos/topf.yaml apply
+```
+
 ## Drain and Undrain a Node
 
 Drain:
