@@ -17,6 +17,7 @@ limbo:
   image: ghcr.io/quozul/picolimbo:latest
 
 service:
+  type: LoadBalancer
   loadBalancerIP: 10.3.3.11
   mcProxyPort: 25565
   voiceChatPort: 25577

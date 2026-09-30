@@ -1,5 +1,18 @@
 # Operations
 
+## PR Previews
+
+Add the `preview` label to deploy application charts into `<chart>-pr-<number>`.
+Minecraft previews use ClusterIP. Connect to `localhost:25565` after running:
+
+```bash
+kubectl -n minecraft-pr-32 port-forward service/mc-proxy-service 25565:25565
+```
+
+Replace `32` with the PR number. Port forwarding supports TCP only, so UDP voice
+chat requires access from inside the cluster. Rebase older PRs to include the
+configurable Service type; their production VIP is cleared until then.
+
 ## Drain and Undrain a Node
 
 Drain:
