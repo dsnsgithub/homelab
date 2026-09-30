@@ -22,14 +22,8 @@ spec:
           - git:
               repoURL: https://github.com/dsnsgithub/homelab.git
               revision: "{{ include "argocd-pr-generator.gotpl" ".head_sha" }}"
-              directories:
-                - path: charts/*
-                - path: charts/argocd-pr-generator
-                  exclude: true
-                - path: charts/argocd-server-lb
-                  exclude: true
-                - path: charts/cert-manager-config
-                  exclude: true
+              files:
+                - path: charts/*/values-preview.yaml
   template:
     metadata:
       name: "{{ include "argocd-pr-generator.gotpl" ".path.basename" }}-pr-{{ include "argocd-pr-generator.gotpl" ".number" }}"
@@ -42,17 +36,10 @@ spec:
         targetRevision: "{{ include "argocd-pr-generator.gotpl" ".head_sha" }}"
         path: "{{ include "argocd-pr-generator.gotpl" ".path.path" }}"
         helm:
-          values: |
+          valueFiles:
+            - values-preview.yaml
+          valuesObject:
             namespace: "{{ include "argocd-pr-generator.gotpl" ".path.basename" }}-pr-{{ include "argocd-pr-generator.gotpl" ".number" }}"
-            {{ include "argocd-pr-generator.gotpl" "if eq .path.basename \"minecraft\"" }}
-            service:
-              type: ClusterIP
-              loadBalancerIP: ""
-            {{ include "argocd-pr-generator.gotpl" "end" }}
-            {{ include "argocd-pr-generator.gotpl" "if eq .path.basename \"web-proxy\"" }}
-            certificates: []
-            ingressRoutes: []
-            {{ include "argocd-pr-generator.gotpl" "end" }}
       destination:
         server: https://kubernetes.default.svc
         namespace: "{{ include "argocd-pr-generator.gotpl" ".path.basename" }}-pr-{{ include "argocd-pr-generator.gotpl" ".number" }}"
