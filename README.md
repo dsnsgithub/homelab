@@ -21,7 +21,9 @@ kubectl apply -f argocd/root-app.yaml
 Open the Argo CD UI at `https://10.3.3.9`.
 
 ## Applications (currently migrating to the cluster)
-In addition to kube-vip, all stateless applications (proxies, VPNs) are replicated across two different nodes to minimize downtime.
+MetalLB advertises Service IPs `10.3.3.9–11` on the LAN using L2 announcements. All stateless applications (proxies, VPNs) are replicated across two different nodes to minimize downtime.
+
+For an existing kube-vip cluster, follow the [MetalLB cutover](docs/operations.md#replace-kube-vip-with-metallb) before merging this change.
 
 | | Service | Address | Status |
 |--|---------|---------|--------|
