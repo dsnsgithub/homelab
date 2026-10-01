@@ -14,16 +14,16 @@ Bootstrap is a one-time procedure. Afterwards, every change follows the same loo
 
 ```bash
 git clone https://github.com/dsnsgithub/homelab/ && cd homelab
-# Assumes a Talos cluster with Cilium installed. See docs/bootstrap.md for setup.
+# Assumes an existing Talos Kubernetes cluster. To start from scratch, see docs/bootstrap.md.
 kubectl apply -f argocd/root-app.yaml
 ```
 
 Open the Argo CD UI at `https://10.3.3.9`.
 
 ## Applications (currently migrating to the cluster)
-Cilium provides pod networking, replaces kube-proxy, and advertises Service IPs on the LAN using L2 announcements. The reserved Service IPs are `10.3.3.9–11`; Talos manages the Kubernetes API VIP at `10.3.3.8`. All stateless applications (proxies, VPNs) are replicated across two different nodes to minimize downtime.
+MetalLB advertises Service IPs `10.3.3.9–11` on the LAN using L2 announcements. All stateless applications (proxies, VPNs) are replicated across two different nodes to minimize downtime.
 
-Existing kube-vip clusters require a maintenance window; follow the [Cilium migration](docs/cilium-migration.md) before enabling the new GitOps applications.
+For an existing kube-vip cluster, follow the [MetalLB cutover](docs/operations.md#replace-kube-vip-with-metallb) before merging this change.
 
 | | Service | Address | Status |
 |--|---------|---------|--------|
@@ -40,4 +40,3 @@ Existing kube-vip clusters require a maintenance window; follow the [Cilium migr
 |------|----------|
 | [Bootstrap](docs/bootstrap.md) | Prerequisites and first-time Talos to Argo CD bring-up |
 | [Operations](docs/operations.md) | Day-to-day GitOps, growing the cluster, secrets |
-| [Cilium migration](docs/cilium-migration.md) | Replace Flannel, kube-proxy, and kube-vip on an existing cluster |

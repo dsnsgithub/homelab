@@ -3,16 +3,10 @@ kind: Service
 metadata:
   name: mc-proxy-service
   namespace: {{ .Values.namespace }}
-  {{- if eq .Values.service.type "LoadBalancer" }}
-  labels:
-    homelab.dsns.dev/load-balancer: cilium
-  annotations:
-    lbipam.cilium.io/ips: {{ .Values.service.loadBalancerIP | quote }}
-  {{- end }}
 spec:
   type: {{ .Values.service.type }}
   {{- if eq .Values.service.type "LoadBalancer" }}
-  externalTrafficPolicy: Cluster
+  loadBalancerIP: {{ .Values.service.loadBalancerIP }}
   {{- end }}
   selector:
     app: mc-proxy

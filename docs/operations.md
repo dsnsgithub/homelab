@@ -45,33 +45,44 @@ topf --topfconfig talos/topf.yaml apply
 
 ## Service Load Balancers
 
-Cilium allocates and announces the Service addresses in `infra/cilium/config/load-balancer-pool.yaml`. The pool and L2 policy select Services with the label `homelab.dsns.dev/load-balancer: cilium`. Services request a fixed address with the `lbipam.cilium.io/ips` annotation; the local chart values still call that setting `loadBalancerIP`.
+MetalLB advertises `10.3.3.9–11` on the LAN. Services retain their existing `spec.loadBalancerIP` requests: Argo CD uses `.9`, Traefik `.10`, and Minecraft `.11`. Keep these IPs outside DHCP; `10.3.3.8` belongs to Talos's API VIP. Flannel and kube-proxy continue to provide cluster networking.
 
-| Service | Reserved IP |
-|---------|-------------|
-| Argo CD | `10.3.3.9` |
-| Traefik | `10.3.3.10` |
-| Minecraft (TCP and UDP) | `10.3.3.11` |
+The `metallb` Argo CD application installs the chart and the pool/L2 advertisement in `infra/metallb/config`. The configuration syncs after the controller and speakers are healthy. BGP's FRR-K8s backend is disabled because this cluster uses L2 only. MetalLB honors the existing `node.kubernetes.io/exclude-from-external-load-balancers` label, so `talos-m2` does not announce Service IPs. Speakers need TCP and UDP port `7946` open between nodes.
 
-Keep these addresses outside DHCP. When adding an address, extend the pool and the excluded `/32` entries in both `talos/control-plane/01-vip.yaml` and `talos/control-plane/02-node.yaml`, then apply the Talos patches. Keep `10.3.3.8` out of the pool: it belongs to Talos's API VIP.
+### Replace kube-vip with MetalLB
 
-The Cilium agent runs on every node, including `talos-m2`, but the L2 policy excludes nodes carrying `node.kubernetes.io/exclude-from-external-load-balancers`. Currently only `talos-m4` and `talos-raider` announce Service IPs. Each Service has one announcing node, with lease-based failover; this does not distribute incoming traffic across both nodes before it reaches the cluster.
+Expect a brief Service interruption during the handover. Use Kubernetes directly at `10.3.3.8:6443`; the Argo CD UI's Service IP is being moved.
 
-Use `externalTrafficPolicy: Cluster` for these Services. [Cilium L2 announcements](https://docs.cilium.io/en/stable/network/l2-announcements/) is currently beta and does not support `externalTrafficPolicy: Local`.
-
-Inspect allocations, leases, and detected LAN interfaces:
+Before merging, pause root and kube-vip auto-sync, and wait for any in-progress syncs to finish:
 
 ```bash
-kubectl get ciliumloadbalancerippools,ciliuml2announcementpolicies
-kubectl get services -A -l homelab.dsns.dev/load-balancer=cilium -o wide
-kubectl -n kube-system get leases
-kubectl -n kube-system exec ds/cilium -- cilium-dbg status --verbose
-kubectl -n kube-system exec ds/cilium -- cilium-dbg shell -- db/show devices
+kubectl -n argocd patch application root --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":null}}}'
+kubectl -n argocd patch application kube-vip --type=merge \
+  -p '{"spec":{"syncPolicy":{"automated":null}}}'
 ```
 
-The L2 leases start with `cilium-l2announce-`. Verify `10.3.3.9–11` are reachable from another machine on the LAN. On nodes with multiple NICs, ensure Cilium selects the interface on `10.3.3.0/24`; configure the Helm `devices` option and the policy's `interfaces` regexes if automatic detection selects the wrong NIC.
+After merging, stop kube-vip before allowing MetalLB to announce the same addresses, then resume the root application:
 
-For an existing Flannel/kube-vip cluster, use the [migration procedure](cilium-migration.md) before applying the new Talos patch or syncing the Cilium applications.
+```bash
+kubectl -n kube-system delete daemonset kube-vip
+kubectl -n kube-system wait --for=delete pod \
+  -l app.kubernetes.io/name=kube-vip --timeout=2m
+kubectl apply -f argocd/root-app.yaml
+```
+
+Once Argo CD has created the MetalLB resources, verify:
+
+```bash
+kubectl -n metallb-system rollout status deployment/metallb-controller --timeout=3m
+kubectl -n metallb-system rollout status daemonset/metallb-speaker --timeout=3m
+kubectl -n metallb-system get ipaddresspools,l2advertisements
+kubectl get services -A
+```
+
+From another LAN machine, check Argo CD and Traefik HTTPS, Minecraft TCP, and voice-chat UDP. Remove kube-vip's remaining RBAC and ServiceAccount using its old chart manifests after verification; its Application has no finalizer and can leave these objects behind.
+
+To roll back, pause root and MetalLB auto-sync, delete the `metallb-controller` Deployment and `metallb-speaker` DaemonSet, and wait for their pods to stop. Restore the previous repository revision and kube-vip Application before resuming root auto-sync.
 
 ## Drain and Undrain a Node
 

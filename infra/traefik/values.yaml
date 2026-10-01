@@ -6,12 +6,8 @@ providers:
     allowExternalNameServices: true
 
 service:
-  labels:
-    homelab.dsns.dev/load-balancer: cilium
-  annotations:
-    lbipam.cilium.io/ips: "10.3.3.10"
   spec:
-    externalTrafficPolicy: Cluster
+    loadBalancerIP: "10.3.3.10"
 
 ports:
   web:

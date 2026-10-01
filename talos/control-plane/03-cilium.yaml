@@ -1,8 +1,0 @@
-# Talos 1.14+ reconciles Flannel and kube-proxy from control-plane configs.
-apiVersion: v1alpha1
-kind: KubeFlannelCNIConfig
-$patch: delete
----
-apiVersion: v1alpha1
-kind: KubeProxyConfig
-enabled: false
