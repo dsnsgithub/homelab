@@ -43,6 +43,36 @@ Apply Talos configuration changes with:
 topf --topfconfig talos/topf.yaml apply
 ```
 
+## Service Load Balancers
+
+Cilium allocates and announces the Service addresses in `infra/cilium/config/load-balancer-pool.yaml`. The pool and L2 policy select Services with the label `homelab.dsns.dev/load-balancer: cilium`. Services request a fixed address with the `lbipam.cilium.io/ips` annotation; the local chart values still call that setting `loadBalancerIP`.
+
+| Service | Reserved IP |
+|---------|-------------|
+| Argo CD | `10.3.3.9` |
+| Traefik | `10.3.3.10` |
+| Minecraft (TCP and UDP) | `10.3.3.11` |
+
+Keep these addresses outside DHCP. When adding an address, extend the pool and the excluded `/32` entries in both `talos/control-plane/01-vip.yaml` and `talos/control-plane/02-node.yaml`, then apply the Talos patches. Keep `10.3.3.8` out of the pool: it belongs to Talos's API VIP.
+
+The Cilium agent runs on every node, including `talos-m2`, but the L2 policy excludes nodes carrying `node.kubernetes.io/exclude-from-external-load-balancers`. Currently only `talos-m4` and `talos-raider` announce Service IPs. Each Service has one announcing node, with lease-based failover; this does not distribute incoming traffic across both nodes before it reaches the cluster.
+
+Use `externalTrafficPolicy: Cluster` for these Services. [Cilium L2 announcements](https://docs.cilium.io/en/stable/network/l2-announcements/) is currently beta and does not support `externalTrafficPolicy: Local`.
+
+Inspect allocations, leases, and detected LAN interfaces:
+
+```bash
+kubectl get ciliumloadbalancerippools,ciliuml2announcementpolicies
+kubectl get services -A -l homelab.dsns.dev/load-balancer=cilium -o wide
+kubectl -n kube-system get leases
+kubectl -n kube-system exec ds/cilium -- cilium-dbg status --verbose
+kubectl -n kube-system exec ds/cilium -- cilium-dbg shell -- db/show devices
+```
+
+The L2 leases start with `cilium-l2announce-`. Verify `10.3.3.9–11` are reachable from another machine on the LAN. On nodes with multiple NICs, ensure Cilium selects the interface on `10.3.3.0/24`; configure the Helm `devices` option and the policy's `interfaces` regexes if automatic detection selects the wrong NIC.
+
+For an existing Flannel/kube-vip cluster, use the [migration procedure](cilium-migration.md) before applying the new Talos patch or syncing the Cilium applications.
+
 ## Drain and Undrain a Node
 
 Drain:

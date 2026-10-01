@@ -1,22 +1,16 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: kube-vip
+  name: cilium-config
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "-10"
 spec:
   project: default
-  sources:
-    - repoURL: https://kube-vip.github.io/helm-charts
-      chart: kube-vip
-      targetRevision: 0.11.1
-      helm:
-        valueFiles:
-          - $homelab/infra/kube-vip/values.yaml
-    - repoURL: https://github.com/dsnsgithub/homelab.git
-      targetRevision: main
-      ref: homelab
+  source:
+    repoURL: https://github.com/dsnsgithub/homelab.git
+    targetRevision: main
+    path: infra/cilium/config
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system
@@ -26,3 +20,5 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=false
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true

@@ -5,9 +5,12 @@ metadata:
   namespace: {{ .Values.namespace }}
   labels:
     app.kubernetes.io/name: {{ .Values.name }}
+    homelab.dsns.dev/load-balancer: cilium
+  annotations:
+    lbipam.cilium.io/ips: {{ .Values.loadBalancerIP | quote }}
 spec:
   type: LoadBalancer
-  loadBalancerIP: {{ .Values.loadBalancerIP }}
+  externalTrafficPolicy: Cluster
   selector:
     app.kubernetes.io/name: argocd-server
   ports:

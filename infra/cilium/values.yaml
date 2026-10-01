@@ -1,0 +1,53 @@
+# Talos provides the pod CIDRs, bpffs, cgroupv2, and a local API proxy.
+ipam:
+  mode: kubernetes
+
+kubeProxyReplacement: true
+k8sServiceHost: localhost
+k8sServicePort: 7445
+
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE
+
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup
+
+bpf:
+  autoMount:
+    enabled: false
+
+# Talos manages host sysctls; its /etc/sysctl.d is read-only.
+sysctlfix:
+  enabled: false
+
+operator:
+  replicas: 2
+
+# Use the automatically detected node interfaces; names vary across the VMs.
+l2announcements:
+  enabled: true
+  leaseDuration: 5s
+  leaseRenewDeadline: 3s
+  leaseRetryPeriod: 1s
+
+k8sClientRateLimit:
+  qps: 20
+  burst: 40
