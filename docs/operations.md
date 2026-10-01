@@ -49,6 +49,10 @@ MetalLB advertises `10.3.3.9–11` on the LAN. Services retain their existing `s
 
 The `metallb` Argo CD application installs the chart and the pool/L2 advertisement in `infra/metallb/config`. The configuration syncs after the controller and speakers are healthy. BGP's FRR-K8s backend is disabled because this cluster uses L2 only. MetalLB honors the existing `node.kubernetes.io/exclude-from-external-load-balancers` label, so `talos-m2` does not announce Service IPs. Speakers need TCP and UDP port `7946` open between nodes.
 
+Production child Applications use `resources-finalizer.argocd.argoproj.io`. Removing an Application from Git lets Argo CD delete its managed resources, including workloads, Services, and RBAC, before completing Application deletion. `automated.prune` handles resources removed from a surviving app; the finalizer handles deleting the app itself. Preview Applications already use the same finalizer.
+
+The config chart retains the shared `cert-manager` namespace with `Delete=false`, because the separate cert-manager controller still uses it.
+
 ### Replace kube-vip with MetalLB
 
 Expect a brief Service interruption during the handover. Use Kubernetes directly at `10.3.3.8:6443`; the Argo CD UI's Service IP is being moved.
@@ -62,12 +66,12 @@ kubectl -n argocd patch application kube-vip --type=merge \
   -p '{"spec":{"syncPolicy":{"automated":null}}}'
 ```
 
-After merging, stop kube-vip before allowing MetalLB to announce the same addresses, then resume the root application:
+After merging, attach the finalizer to the existing kube-vip Application and delete it. This one-time patch is necessary because its old manifest had no finalizer. Wait for cascading cleanup to complete before resuming root and allowing MetalLB to announce the same addresses:
 
 ```bash
-kubectl -n kube-system delete daemonset kube-vip
-kubectl -n kube-system wait --for=delete pod \
-  -l app.kubernetes.io/name=kube-vip --timeout=2m
+kubectl -n argocd patch application kube-vip --type=merge \
+  -p '{"metadata":{"finalizers":["resources-finalizer.argocd.argoproj.io"]}}'
+kubectl -n argocd delete application kube-vip --wait=true --timeout=3m
 kubectl apply -f argocd/root-app.yaml
 ```
 
@@ -80,9 +84,9 @@ kubectl -n metallb-system get ipaddresspools,l2advertisements
 kubectl get services -A
 ```
 
-From another LAN machine, check Argo CD and Traefik HTTPS, Minecraft TCP, and voice-chat UDP. Remove kube-vip's remaining RBAC and ServiceAccount using its old chart manifests after verification; its Application has no finalizer and can leave these objects behind.
+From another LAN machine, check Argo CD and Traefik HTTPS, Minecraft TCP, and voice-chat UDP. Argo CD's cascading deletion also removes kube-vip's managed RBAC and ServiceAccount.
 
-To roll back, pause root and MetalLB auto-sync, delete the `metallb-controller` Deployment and `metallb-speaker` DaemonSet, and wait for their pods to stop. Restore the previous repository revision and kube-vip Application before resuming root auto-sync.
+To roll back, pause root, delete the MetalLB Application with cascading cleanup, and wait for deletion to finish. Restore the previous repository revision and kube-vip Application before resuming root auto-sync.
 
 ## Drain and Undrain a Node
 
