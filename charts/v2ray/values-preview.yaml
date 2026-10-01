@@ -1,2 +1,3 @@
-# Opt into previews; chart defaults need no overrides beyond the PR namespace.
-{}
+# Keep production DNS and certificate issuance out of PR namespaces.
+ingress:
+  enabled: false

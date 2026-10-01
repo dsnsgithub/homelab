@@ -1,0 +1,25 @@
+controller:
+  replicaCount: 2
+  enableCustomResources: false
+
+  service:
+    type: LoadBalancer
+    loadBalancerIP: "10.3.3.10"
+    # kube-vip may advertise from a node without a local controller pod.
+    externalTrafficPolicy: Cluster
+
+  config:
+    entries:
+      http2: "true"
+      keepalive: "64"
+      # The built-in websocket-services annotation sends Connection: close
+      # for ordinary HTTP requests. Keep those connections reusable instead.
+      http-snippets: |
+        map $http_upgrade $homelab_connection_upgrade {
+          default upgrade;
+          '' "";
+        }
+      http-redirect-code: "308"
+      # Preserve streaming responses and unrestricted uploads from Traefik.
+      proxy-buffering: "false"
+      client-max-body-size: "0"

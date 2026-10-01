@@ -1,0 +1,30 @@
+{{- range .Values.ingresses }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.namespace }}
+  annotations:
+    nginx.org/proxy-set-headers: "Upgrade: $http_upgrade, Connection: $homelab_connection_upgrade"
+    {{- with .annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ $.Values.ingressClassName }}
+  rules:
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .service }}
+                port:
+                  number: {{ .port }}
+  tls:
+    - hosts:
+        - {{ .host | quote }}
+      secretName: {{ .tlsSecret }}
+{{- end }}
