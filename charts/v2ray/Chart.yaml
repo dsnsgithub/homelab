@@ -2,4 +2,4 @@ apiVersion: v2
 name: v2ray
 description: V2Ray VPN server
 type: application
-version: 0.1.0
+version: 0.2.0

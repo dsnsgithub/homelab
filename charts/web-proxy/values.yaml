@@ -1,7 +1,7 @@
 namespace: web-proxy
 createNamespace: true
 
-# Headless services backed by EndpointSlices pointing at bare-metal/VMs.
+# Selectorless services backed by EndpointSlices pointing at bare-metal/VMs.
 services:
   - name: max-proxy
     port: 80
@@ -19,38 +19,35 @@ services:
     endpoints:
       - 10.3.3.172
 
-# Cluster-internal name-based services.
-externalServices:
-  - name: vray
-    externalName: v2ray-service.v2ray-vpn.svc.cluster.local
-    port: 10086
-
-ingressRoutes:
+# V2Ray owns its Ingress in v2ray-vpn so NGINX can use its Service directly.
+ingressClassName: nginx
+ingresses:
   - name: wildcard-mseung-dev
-    match: HostRegexp(`.+\.mseung\.dev`)
+    host: "*.mseung.dev"
     service: max-proxy
     port: 80
     tlsSecret: mseung-wildcard-tls
   - name: wildcard-seung-dev
-    match: HostRegexp(`.+\.seung\.dev`)
+    host: "*.seung.dev"
     service: max-proxy
     port: 80
     tlsSecret: seung-wildcard-tls
   - name: code-dsns-dev
-    match: Host(`code.dsns.dev`)
+    host: code.dsns.dev
     service: code
     port: 7799
     tlsSecret: dsns-wildcard-tls
+    annotations:
+      nginx.org/proxy-read-timeout: "3600s"
+      nginx.org/proxy-send-timeout: "3600s"
   - name: immich-dsns-dev
-    match: Host(`immich.dsns.dev`)
+    host: immich.dsns.dev
     service: immich
     port: 2283
     tlsSecret: dsns-wildcard-tls
-  - name: vray-dsns-dev
-    match: Host(`vray.dsns.dev`)
-    service: vray
-    port: 10086
-    tlsSecret: dsns-wildcard-tls
+    annotations:
+      nginx.org/proxy-read-timeout: "3600s"
+      nginx.org/proxy-send-timeout: "3600s"
 
 certificates:
   - name: wildcard-dsns-dev

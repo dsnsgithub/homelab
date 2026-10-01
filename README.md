@@ -12,6 +12,8 @@ Anything that isn't colored in the diagram can be changed, as this homelab is pl
 
 Bootstrap is a one-time procedure. Afterwards, every change follows the same loop: edit, push, and Argo CD syncs automatically.
 
+For an existing Traefik deployment, follow the [NGINX cutover steps](docs/operations.md#cut-over-from-traefik) before merging the migration so the old controller releases its load balancer IP.
+
 ```bash
 git clone https://github.com/dsnsgithub/homelab/ && cd homelab
 # Assumes an existing Talos Kubernetes cluster. To start from scratch, see docs/bootstrap.md.
@@ -27,7 +29,7 @@ In addition to kube-vip, all stateless applications (proxies, VPNs) are replicat
 |--|---------|---------|--------|
 | <img src="docs/assets/icons/minecraft.png" width="22" height="22" alt="Minecraft icon"> | Minecraft (Velocity proxy) | `mc.dsns.dev:25565` | Live |
 | <img src="docs/assets/icons/v2ray.png" width="22" height="22" alt="V2Ray icon"> | V2Ray VPN | `vray.dsns.dev` | Live |
-| <img src="docs/assets/icons/seung.ico" width="22" height="22" alt="seung.dev icon"> <img src="docs/assets/icons/mseung.ico" width="22" height="22" alt="mseung.dev icon"> | Web proxy (Traefik) | `*.seung.dev`, `*.mseung.dev` | Live |
+| <img src="docs/assets/icons/seung.ico" width="22" height="22" alt="seung.dev icon"> <img src="docs/assets/icons/mseung.ico" width="22" height="22" alt="mseung.dev icon"> | Web proxy (NGINX) | `*.seung.dev`, `*.mseung.dev` | Live |
 | <img src="docs/assets/icons/immich.ico" width="22" height="22" alt="Immich icon"> | Immich | `immich.dsns.dev` | Migration Planned |
 | <img src="docs/assets/icons/code.ico" width="22" height="22" alt="T3 Code icon"> | T3 Code Web | `code.dsns.dev` | Migration Planned |
 | <img src="docs/assets/icons/wireguard.png" width="22" height="22" alt="WireGuard icon"> | WireGuard VPN | Not publicly accessible | Potential Migration Planned |
