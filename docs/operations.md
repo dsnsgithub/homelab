@@ -33,6 +33,12 @@ chat requires access from inside the cluster. Older PRs must include the preview
 values files to be discovered and the configurable Minecraft Service type to
 avoid claiming the production VIP.
 
+## Application Deletion
+
+Production child Applications use `resources-finalizer.argocd.argoproj.io`. Removing an Application from Git lets Argo CD delete its managed workloads, Services, and RBAC before completing Application deletion. `automated.prune` handles resources removed from a surviving app; the finalizer handles deleting the app itself. Preview Applications already use the same finalizer.
+
+Let root sync these finalizers before removing an existing Application from Git. The cert-manager config chart retains its shared namespace with `Delete=false`, because the separate cert-manager controller still uses it.
+
 ## Control Plane Scheduling
 
 `talos-m2` uses the default control plane taint (`node-role.kubernetes.io/control-plane:NoSchedule`) and is excluded from external load balancers. `talos-m4` and `talos-raider` remain control plane nodes with those defaults removed so they can run workloads.
