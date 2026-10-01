@@ -51,6 +51,8 @@ The `metallb` Argo CD application installs the chart and the pool/L2 advertiseme
 
 ### Replace kube-vip with MetalLB
 
+First merge [the Application cleanup PR #37](https://github.com/dsnsgithub/homelab/pull/37) and let root sync it. This enables cascading deletion for the existing kube-vip Application.
+
 Expect a brief Service interruption during the handover. Use Kubernetes directly at `10.3.3.8:6443`; the Argo CD UI's Service IP is being moved.
 
 Before merging, pause root and kube-vip auto-sync, and wait for any in-progress syncs to finish:
@@ -62,12 +64,10 @@ kubectl -n argocd patch application kube-vip --type=merge \
   -p '{"spec":{"syncPolicy":{"automated":null}}}'
 ```
 
-After merging, stop kube-vip before allowing MetalLB to announce the same addresses, then resume the root application:
+After merging the MetalLB PR, delete the kube-vip Application and wait for its managed resources to be cleaned up before resuming root:
 
 ```bash
-kubectl -n kube-system delete daemonset kube-vip
-kubectl -n kube-system wait --for=delete pod \
-  -l app.kubernetes.io/name=kube-vip --timeout=2m
+kubectl -n argocd delete application kube-vip --wait=true --timeout=3m
 kubectl apply -f argocd/root-app.yaml
 ```
 
@@ -80,9 +80,9 @@ kubectl -n metallb-system get ipaddresspools,l2advertisements
 kubectl get services -A
 ```
 
-From another LAN machine, check Argo CD and Traefik HTTPS, Minecraft TCP, and voice-chat UDP. Remove kube-vip's remaining RBAC and ServiceAccount using its old chart manifests after verification; its Application has no finalizer and can leave these objects behind.
+From another LAN machine, check Argo CD and Traefik HTTPS, Minecraft TCP, and voice-chat UDP. The cascading deletion also removes kube-vip's managed RBAC and ServiceAccount.
 
-To roll back, pause root and MetalLB auto-sync, delete the `metallb-controller` Deployment and `metallb-speaker` DaemonSet, and wait for their pods to stop. Restore the previous repository revision and kube-vip Application before resuming root auto-sync.
+To roll back, pause root, delete the MetalLB Application with cascading cleanup, and wait for deletion to finish. Restore the previous repository revision and kube-vip Application before resuming root auto-sync.
 
 ## Drain and Undrain a Node
 
