@@ -6,13 +6,11 @@ topologySpreadConstraints:
       matchLabels:
         app.kubernetes.io/name: '{{ template "traefik.name" . }}'
         app.kubernetes.io/instance: '{{ template "traefik.instance-name" . }}'
-    # Only count pods from the same rollout, or old pods skew new ones onto one node.
     matchLabelKeys:
       - pod-template-hash
     maxSkew: 1
     topologyKey: kubernetes.io/hostname
     whenUnsatisfiable: DoNotSchedule
-    # Skip cordoned/down nodes so a lost node doesn't leave replicas Pending.
     nodeTaintsPolicy: Honor
 
 providers:
@@ -22,8 +20,6 @@ providers:
 service:
   spec:
     loadBalancerIP: "10.3.3.10"
-    # kube-vip only announces the VIP from nodes running a Traefik pod, so
-    # traffic is served where it lands instead of hopping across the overlay.
     externalTrafficPolicy: Local
 
 ports:

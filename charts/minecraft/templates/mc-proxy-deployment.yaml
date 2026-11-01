@@ -17,13 +17,11 @@ spec:
       - labelSelector:
           matchLabels:
             app: mc-proxy
-        # Only count pods from the same rollout, or old pods skew new ones onto one node.
         matchLabelKeys:
         - pod-template-hash
         maxSkew: 1
         topologyKey: kubernetes.io/hostname
         whenUnsatisfiable: DoNotSchedule
-        # Skip cordoned/down nodes so a lost node doesn't leave replicas Pending.
         nodeTaintsPolicy: Honor
       initContainers:
       - name: init-configs
