@@ -19,8 +19,8 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
         with:
           install_args: talos aqua:postfinance/topf
       - run: |
@@ -39,10 +39,10 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7
         with:
           path: pull-request
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7
         with:
           ref: main
           path: main
@@ -80,7 +80,7 @@ jobs:
       PR: ${{ github.event.pull_request.number }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - id: scope
@@ -101,7 +101,7 @@ jobs:
           gh label create preview --color 0E8A16 --force
           gh pr edit "$PR" --add-label preview
       - if: steps.scope.outputs.apps
-        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        uses: jdx/mise-action@v5
         with:
           install_args: argocd
       - if: steps.scope.outputs.apps
@@ -134,8 +134,8 @@ jobs:
       group: production
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
         with:
           install_args: argocd talos sops aqua:postfinance/topf
       - env:
