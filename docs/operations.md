@@ -4,23 +4,25 @@
 
 `main` is production. Every change goes through a PR, which must pass:
 
-- `talos`: `talosctl validate` on the rendered machine configs.
+- `render`: renders `bootstrap/` and runs `talosctl validate` on the rendered machine configs.
 - `diff`: [argocd-diff-preview](https://github.com/dag-andersen/argocd-diff-preview), commented on the PR.
 - `preview`: deploys previews if the PR changes a chart with `values-preview.yaml`, then `argocd app wait`.
 
-On merge, `deploy` runs `topf apply` in try mode, then for real, then `argocd app wait`. Talos changes that need a reboot can't use try mode, so apply those by hand.
+On merge, `deploy` runs `topf apply` in try mode, then for real, applies `bootstrap/` (Argo CD and sealed-secrets), then `argocd app wait`. Talos changes that need a reboot can't use try mode, so apply those by hand.
 
 To undo a merge, revert it. Admin pushes to `main` skip the checks but still deploy.
+
+Versions are pinned everywhere; [Renovate](https://docs.renovatebot.com/) opens PRs to bump them.
 
 ## CI Secrets
 
 | Secret | Environments | Contents |
 |---|---|---|
 | `WG_CONFIG` | `production`, `preview` | WireGuard peer for the runner, with `AllowedIPs = 10.3.3.0/24` and no `DNS` |
-| `ARGOCD_AUTH_TOKEN` | `production`, `preview` | Read-only `github-ci` Argo CD account (`charts/argocd-config`) |
-| `SOPS_AGE_KEY` | `production` | CI age key for `talos/secrets.yaml` (full node access) |
+| `ARGOCD_AUTH_TOKEN` | `production`, `preview` | Read-only `github-ci` Argo CD account (`bootstrap/argocd`) |
+| `SOPS_AGE_KEY` | `production` | CI age key for `talos/secrets.yaml` and `bootstrap/sealed-secrets/keys.yaml` (full cluster access) |
 
-To rotate `SOPS_AGE_KEY`, replace the CI recipient in `.sops.yaml` and run `sops updatekeys talos/secrets.yaml`.
+To rotate `SOPS_AGE_KEY`, replace the CI recipient in `.sops.yaml` and run `sops updatekeys` on both files.
 
 ## PR Previews
 

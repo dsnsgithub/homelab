@@ -9,7 +9,7 @@ cd homelab
 mise install
 ```
 
-If you are rebuilding onto an existing healthy cluster, skip to [step 4](#4-install-argo-cd).
+If you are rebuilding onto an existing healthy cluster, skip to [step 3](#3-install-argo-cd-and-sealed-secrets).
 
 
 ## 1. Download Talos ISOs and Boot VMs
@@ -43,27 +43,16 @@ mkdir -p ~/.talos
 topf --topfconfig talos/topf.yaml talosconfig > ~/.talos/config
 ```
 
-## 3. Install Argo CD
+## 3. Install Argo CD and Sealed Secrets
+
+Restore the sealing keys first so existing `SealedSecret`s decrypt without re-sealing. After bootstrap, the `deploy` job applies this on every merge.
 
 ```bash
-kubectl create namespace argocd
-kubectl apply -n argocd --server-side --force-conflicts \
-  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+sops decrypt bootstrap/sealed-secrets/keys.yaml | kubectl apply --server-side -f -
+kubectl apply --server-side --force-conflicts -k bootstrap
 ```
 
-## 4. Install Sealed Secrets
-
-The controller decrypts `SealedSecret` objects into regular Secrets at sync time. `kubeseal` runs locally against the cluster public certificate and performs the encryption. A fresh cluster generates a fresh controller certificate, so every secret must be re-sealed when rebuilding from scratch.
-
-```bash
-kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/latest/download/controller.yaml
-```
-
-For every sealed secret in the chart `values.yaml` files (under `sealedSecret:`), re-seal the plain input and paste the output into the chart's `encryptedData` before bootstrapping.
-
-The currently sealed inputs are the Cloudflare token (`charts/cert-manager-config/values.yaml`), the Minecraft config (`charts/minecraft/values.yaml`), the V2Ray config (`charts/v2ray/values.yaml`), and the GitHub PR generator token (`charts/argocd-pr-generator/values.yaml`).
-
-## 5. Deploy the Root App
+## 4. Deploy the Root App
 
 This is the last manually executed command of the setup procedure. It points Argo CD at `argocd/apps` on `main`, and Argo CD installs the rest by itself within about 3 minutes.
 

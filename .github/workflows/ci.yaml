@@ -14,16 +14,19 @@ env:
   ARGOCD_OPTS: --insecure --grpc-web
 
 jobs:
-  talos:
-    name: talos
+  render:
+    name: render
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
         with:
-          install_args: talos aqua:postfinance/topf
-      - run: |
+          install_args: kubectl talos aqua:postfinance/topf
+      - name: Render bootstrap layer
+        run: kubectl kustomize bootstrap >/dev/null
+      - name: Validate Talos machine configs
+        run: |
           cp -r talos "$RUNNER_TEMP/talos"
           talosctl gen secrets --force -o "$RUNNER_TEMP/talos/secrets.yaml"
           topf --topfconfig "$RUNNER_TEMP/talos/topf.yaml" render -o "$RUNNER_TEMP/out"
@@ -137,7 +140,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
         with:
-          install_args: argocd talos sops aqua:postfinance/topf
+          install_args: argocd kubectl talos sops aqua:postfinance/topf
       - env:
           WG_CONFIG: ${{ secrets.WG_CONFIG }}
         run: |
@@ -151,6 +154,19 @@ jobs:
         run: |
           topf --topfconfig talos/topf.yaml apply --confirm=false --colored never --mode try
           topf --topfconfig talos/topf.yaml apply --confirm=false --colored never
+      # Applied here rather than by Argo CD, so reverting a change that breaks Argo CD still works.
+      - name: Apply Argo CD and sealed-secrets
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          export KUBECONFIG="$RUNNER_TEMP/kubeconfig"
+          topf --topfconfig talos/topf.yaml --log-level warn kubeconfig --validity 1h >"$KUBECONFIG"
+          sops decrypt bootstrap/sealed-secrets/keys.yaml | kubectl apply --server-side -f -
+          kubectl apply --server-side --force-conflicts -k bootstrap
+          kubectl -n kube-system rollout status deploy/sealed-secrets-controller --timeout 300s
+          for workload in $(kubectl -n argocd get deploy,sts -o name); do
+            kubectl -n argocd rollout status "$workload" --timeout 300s
+          done
       - name: Wait for Argo CD
         env:
           ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}

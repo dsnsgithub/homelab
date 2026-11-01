@@ -1,0 +1,25 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "argocd": {
+    "managerFilePatterns": ["/^argocd/.+\\.yaml$/"]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^bootstrap/.+/kustomization\\.yaml$/"],
+      "matchStrings": ["https://github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/(?<currentValue>[^/]+)/"],
+      "datasourceTemplate": "github-releases"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["itzg/mc-proxy"],
+      "versioning": "regex:^java25-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
+    },
+    {
+      "matchPackageNames": ["ghcr.io/quozul/picolimbo"],
+      "versioning": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-mc(?<compatibility>.+)$"
+    }
+  ]
+}
