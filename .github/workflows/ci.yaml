@@ -5,11 +5,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      talos:
-        description: Apply Talos machine configs even if talos/ didn't change
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -17,7 +12,6 @@ permissions:
 env:
   ARGOCD_SERVER: 10.3.3.9
   ARGOCD_OPTS: --insecure --grpc-web
-  REPO_URL: https://github.com/dsnsgithub/homelab.git
 
 jobs:
   talos:
@@ -29,8 +23,7 @@ jobs:
       - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
           install_args: talos aqua:postfinance/topf
-      - name: Validate machine configs
-        run: |
+      - run: |
           cp -r talos "$RUNNER_TEMP/talos"
           talosctl gen secrets --force -o "$RUNNER_TEMP/talos/secrets.yaml"
           topf --topfconfig "$RUNNER_TEMP/talos/topf.yaml" render -o "$RUNNER_TEMP/out"
@@ -42,77 +35,34 @@ jobs:
     name: diff
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    environment: preview
     permissions:
       contents: read
       pull-requests: write
-    env:
-      GH_TOKEN: ${{ github.token }}
-      PR: ${{ github.event.pull_request.number }}
-      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      - name: Reject fork PRs
-        if: github.event.pull_request.head.repo.full_name != github.repository
-        run: |
-          echo "::error::Fork PRs can't be diffed against the cluster. Push the branch to this repository instead."
-          exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
-          install_args: argocd
-      - name: Connect to home LAN
+          path: pull-request
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          path: main
+      - run: |
+          docker run \
+            --network=host \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$(pwd)/main:/base-branch" \
+            -v "$(pwd)/pull-request:/target-branch" \
+            -v "$(pwd)/output:/output" \
+            -e TARGET_BRANCH=refs/pull/${{ github.event.number }}/merge \
+            -e REPO=${{ github.repository }} \
+            -e FILE_REGEX='argocd/.*\.yaml' \
+            dagandersen/argocd-diff-preview:v0.2.17
+      - if: github.event.pull_request.head.repo.full_name == github.repository
         env:
-          WG_CONFIG: ${{ secrets.WG_CONFIG }}
-        run: .github/scripts/vpn-up.sh
-      - name: Diff production apps at this commit
-        env:
-          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          comment="$RUNNER_TEMP/comment.md"
-          changed=0 failed=0
-          for app in $(argocd app list -p default -o name); do
-            spec=$(argocd app get "$app" -o json)
-            pos=$(jq -r --arg repo "$REPO_URL" '(.spec.sources // []) | to_entries[] | select(.value.repoURL == $repo) | .key + 1' <<<"$spec" | head -1)
-            if [ -n "$pos" ]; then
-              args=(--revisions "$HEAD_SHA" --source-positions "$pos")
-            elif [ "$(jq -r '.spec.source.repoURL' <<<"$spec")" = "$REPO_URL" ]; then
-              args=(--revision "$HEAD_SHA")
-            else
-              continue
-            fi
-            rc=0
-            argocd app diff "$app" "${args[@]}" --server-side-diff >"$RUNNER_TEMP/out" 2>"$RUNNER_TEMP/err" || rc=$?
-            case $rc in
-              0) continue ;;
-              1) changed=$((changed + 1)); body="$RUNNER_TEMP/out"; summary="${app#*/} changes" ;;
-              *) failed=$((failed + 1)); body="$RUNNER_TEMP/err"; summary="${app#*/} failed"
-                 echo "::error::${app#*/}: $(tail -1 "$RUNNER_TEMP/err")" ;;
-            esac
-            fence="\`\`\`"
-            printf '<details><summary>%s</summary>\n\n%sdiff\n%s\n%s\n</details>\n\n' \
-              "$summary" "$fence" "$(head -c 20000 "$body")" "$fence" >>"$RUNNER_TEMP/details.md"
-          done
-          {
-            echo "<!-- argocd-diff -->"
-            echo "### Production diff at \`${HEAD_SHA:0:7}\`"
-            echo
-            if [ $((changed + failed)) -eq 0 ]; then
-              echo "No changes to production apps."
-            else
-              echo "$changed app(s) change, $failed app(s) fail to render or validate."
-              echo
-              cat "$RUNNER_TEMP/details.md"
-            fi
-          } >"$comment"
-          cat "$comment" >>"$GITHUB_STEP_SUMMARY"
-          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
-            -q '.[] | select(.body | startswith("<!-- argocd-diff -->")) | .id' | head -1)
-          if [ -n "$id" ]; then
-            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F "body=@$comment" >/dev/null
-          else
-            gh pr comment "$PR" --body-file "$comment"
-          fi
-          [ "$failed" -eq 0 ]
+          gh pr comment ${{ github.event.number }} --body-file output/diff.md --edit-last || \
+          gh pr comment ${{ github.event.number }} --body-file output/diff.md
 
   preview:
     name: preview
@@ -127,97 +77,53 @@ jobs:
       issues: write
       pull-requests: write
     env:
-      GH_TOKEN: ${{ github.token }}
       PR: ${{ github.event.pull_request.number }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Decide whether this PR needs previews
-        id: scope
+      - id: scope
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          LABELED: ${{ contains(github.event.pull_request.labels.*.name, 'preview') }}
         run: |
-          charts=$(for f in charts/*/values-preview.yaml; do basename "$(dirname "$f")"; done)
-          changed=$(git diff --name-only "$BASE_SHA" HEAD | awk -F/ '$1 == "charts" {print $2}' | sort -u | grep -Fx -f <(echo "$charts") || true)
-          echo "apps=$(for c in $charts; do printf '%s-pr-%s ' "$c" "$PR"; done)" >>"$GITHUB_OUTPUT"
-          if [ -n "$changed" ] || [ "$LABELED" = true ]; then
-            echo "enabled=true" >>"$GITHUB_OUTPUT"
+          charts=$(dirname charts/*/values-preview.yaml)
+          # shellcheck disable=SC2086
+          if git diff --quiet "$BASE_SHA" HEAD -- $charts; then
+            echo "No previewable charts changed."
           else
-            echo "enabled=false" >>"$GITHUB_OUTPUT"
-            echo "No previewable charts changed." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "apps=$(for c in $charts; do printf '%s-pr-%s ' "${c#charts/}" "$PR"; done)" >>"$GITHUB_OUTPUT"
           fi
-      - name: Label PR for the preview ApplicationSet
-        if: steps.scope.outputs.enabled == 'true'
+      - if: steps.scope.outputs.apps
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          gh label create preview --color 0E8A16 --description "Deploy a preview of this PR" --force
+          gh label create preview --color 0E8A16 --force
           gh pr edit "$PR" --add-label preview
-      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
-        if: steps.scope.outputs.enabled == 'true'
+      - if: steps.scope.outputs.apps
+        uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
           install_args: argocd
-      - name: Connect to home LAN
-        if: steps.scope.outputs.enabled == 'true'
+      - if: steps.scope.outputs.apps
         env:
           WG_CONFIG: ${{ secrets.WG_CONFIG }}
-        run: .github/scripts/vpn-up.sh
-      - name: Wait for previews
-        id: wait
-        if: steps.scope.outputs.enabled == 'true'
+        run: |
+          sudo apt-get install -y -qq wireguard-tools
+          echo "$WG_CONFIG" | sudo tee /etc/wireguard/wg0.conf >/dev/null
+          sudo wg-quick up wg0
+      - if: steps.scope.outputs.apps
         env:
           ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
           APPS: ${{ steps.scope.outputs.apps }}
         run: |
-          deadline=$((SECONDS + 300))
           for app in $APPS; do
-            until [ "$(argocd app get "$app" -o json 2>/dev/null | jq -r '.spec.source.targetRevision')" = "$HEAD_SHA" ]; do
-              if [ "$SECONDS" -ge "$deadline" ]; then
-                echo "::error::The ApplicationSet didn't create $app at ${HEAD_SHA:0:7}."
-                exit 1
-              fi
+            until [ "$(argocd app get "$app" -o json 2>/dev/null | jq -r .spec.source.targetRevision)" = "$HEAD_SHA" ]; do
               sleep 5
             done
           done
           # shellcheck disable=SC2086
-          if ! argocd app wait $APPS --sync --health --operation --timeout 600; then
-            for app in $APPS; do argocd app get "$app"; done
-            exit 1
-          fi
-      - name: Comment preview status on PR
-        if: always() && steps.scope.outputs.enabled == 'true'
-        env:
-          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
-          APPS: ${{ steps.scope.outputs.apps }}
-          OUTCOME: ${{ steps.wait.outcome }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          comment="$RUNNER_TEMP/comment.md"
-          {
-            echo "<!-- preview-status -->"
-            if [ "$OUTCOME" = success ]; then
-              echo "### Preview is healthy at \`${HEAD_SHA:0:7}\`"
-            else
-              echo "### Preview failed at \`${HEAD_SHA:0:7}\` ([logs]($RUN_URL))"
-            fi
-            echo
-            echo "| App | Sync | Health |"
-            echo "|---|---|---|"
-            for app in $APPS; do
-              argocd app get "$app" -o json 2>/dev/null \
-                | jq -r '"| \(.metadata.name) | \(.status.sync.status) | \(.status.health.status) |"' \
-                || echo "| $app | Missing | - |"
-            done
-          } >"$comment"
-          cat "$comment" >>"$GITHUB_STEP_SUMMARY"
-          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
-            -q '.[] | select(.body | startswith("<!-- preview-status -->")) | .id' | head -1)
-          if [ -n "$id" ]; then
-            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F "body=@$comment" >/dev/null
-          else
-            gh pr comment "$PR" --body-file "$comment"
-          fi
+          argocd app wait $APPS --sync --health --operation --timeout 600
+        timeout-minutes: 15
 
   deploy:
     name: deploy
@@ -229,29 +135,16 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-      - name: Find what changed
-        id: changes
-        env:
-          BEFORE: ${{ github.event.before }}
-          FORCE_TALOS: ${{ inputs.talos }}
-        run: |
-          talos=${FORCE_TALOS:-false}
-          if [ "$talos" != true ] && git cat-file -e "${BEFORE:-0000}^{commit}" 2>/dev/null \
-            && git diff --name-only "$BEFORE" HEAD | grep -q '^talos/'; then
-            talos=true
-          fi
-          echo "talos=$talos" >>"$GITHUB_OUTPUT"
       - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
           install_args: argocd talos sops aqua:postfinance/topf
-      - name: Connect to home LAN
-        env:
+      - env:
           WG_CONFIG: ${{ secrets.WG_CONFIG }}
-        run: .github/scripts/vpn-up.sh
+        run: |
+          sudo apt-get install -y -qq wireguard-tools
+          echo "$WG_CONFIG" | sudo tee /etc/wireguard/wg0.conf >/dev/null
+          sudo wg-quick up wg0
       - name: Apply Talos machine configs
-        if: steps.changes.outputs.talos == 'true'
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: topf --topfconfig talos/topf.yaml apply --confirm=false --colored never
@@ -262,13 +155,6 @@ jobs:
           argocd app get root --refresh >/dev/null
           argocd app wait root --sync --health --operation --timeout 300
           apps=$(argocd app list -p default -o name)
-          for app in $apps; do argocd app get "$app" --refresh >/dev/null & done
-          wait
-          rc=0
+          for app in $apps; do argocd app get "$app" --refresh >/dev/null; done
           # shellcheck disable=SC2086
-          argocd app wait $apps --sync --health --operation --timeout 900 || rc=$?
-          { echo '```'; argocd app list -p default; echo '```'; } >>"$GITHUB_STEP_SUMMARY"
-          if [ "$rc" -ne 0 ]; then
-            for app in $apps; do argocd app get "$app"; done
-          fi
-          exit "$rc"
+          argocd app wait $apps --sync --health --operation --timeout 900

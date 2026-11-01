@@ -5,10 +5,10 @@
 `main` is production. Every change goes through a PR, which must pass:
 
 - `talos`: `talosctl validate` on the rendered machine configs.
-- `diff`: `argocd app diff --server-side-diff` for every production app at the PR's commit, commented on the PR.
+- `diff`: [argocd-diff-preview](https://github.com/dag-andersen/argocd-diff-preview), commented on the PR.
 - `preview`: deploys previews if the PR changes a chart with `values-preview.yaml`, then `argocd app wait`.
 
-On merge, `deploy` runs `topf apply` if `talos/` changed, then `argocd app wait`. To force a Talos apply, run the workflow manually with `talos` checked.
+On merge, `deploy` runs `topf apply`, then `argocd app wait`.
 
 Admin pushes to `main` skip the checks but still deploy. Revert to roll back.
 
@@ -16,7 +16,7 @@ Admin pushes to `main` skip the checks but still deploy. Revert to roll back.
 
 | Secret | Environments | Contents |
 |---|---|---|
-| `WG_CONFIG` | `production`, `preview` | WireGuard peer for the runner |
+| `WG_CONFIG` | `production`, `preview` | WireGuard peer for the runner, with `AllowedIPs = 10.3.3.0/24` and no `DNS` |
 | `ARGOCD_AUTH_TOKEN` | `production`, `preview` | Read-only `github-ci` Argo CD account (`charts/argocd-config`) |
 | `SOPS_AGE_KEY` | `production` | CI age key for `talos/secrets.yaml` (full node access) |
 
