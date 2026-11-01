@@ -10,7 +10,7 @@ Anything that isn't colored in the diagram can be changed, as this homelab is pl
 
 ## Quickstart
 
-Bootstrap is a one-time procedure. Afterwards, every change follows the same loop: edit, push, and Argo CD syncs automatically.
+Bootstrap is a one-time procedure. Afterwards, every change follows the same loop: open a PR, let CI validate it and deploy a preview, then merge. CI applies Talos changes and waits for Argo CD to sync `main`. See [Operations](docs/operations.md#making-changes).
 
 ```bash
 git clone https://github.com/dsnsgithub/homelab/ && cd homelab

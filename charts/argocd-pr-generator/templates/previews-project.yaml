@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: previews
+  namespace: {{ .Values.namespace }}
+spec:
+  description: PR previews. Namespaced resources in *-pr-* namespaces only.
+  sourceRepos:
+    - https://github.com/dsnsgithub/homelab.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*-pr-*"
+  # Charts own their preview namespace so deleting the preview removes it.
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+      name: "*-pr-*"

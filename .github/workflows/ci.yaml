@@ -1,0 +1,178 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      talos:
+        description: Apply Talos machine configs even if talos/ didn't change
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        with:
+          install_args: helm kubeconform yq talos aqua:postfinance/topf
+      - name: Render and validate manifests and Talos configs
+        run: .github/scripts/validate.sh
+
+  preview:
+    name: preview
+    needs: validate
+    # Fork PRs never get cluster access.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: preview
+    concurrency:
+      group: preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Decide whether this PR needs previews
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          LABELED: ${{ contains(github.event.pull_request.labels.*.name, 'preview') }}
+        run: |
+          charts=$(for f in charts/*/values-preview.yaml; do basename "$(dirname "$f")"; done)
+          changed=$(git diff --name-only "$BASE_SHA" HEAD | awk -F/ '$1 == "charts" {print $2}' | sort -u | grep -Fx -f <(echo "$charts") || true)
+          apps=$(for c in $charts; do printf '%s-pr-%s,' "$c" "$PR"; done)
+          echo "apps=${apps%,}" >>"$GITHUB_OUTPUT"
+          if [ -n "$changed" ] || [ "$LABELED" = true ]; then
+            echo "enabled=true" >>"$GITHUB_OUTPUT"
+            echo "Previews enabled (changed charts: ${changed:-none})."
+          else
+            echo "enabled=false" >>"$GITHUB_OUTPUT"
+            echo "No previewable charts changed; skipping previews." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Label PR for the preview ApplicationSet
+        if: steps.scope.outputs.enabled == 'true'
+        run: |
+          gh label create preview --color 0E8A16 --description "Deploy a preview of this PR" --force
+          gh pr edit "$PR" --add-label preview
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        if: steps.scope.outputs.enabled == 'true'
+        with:
+          install_args: kubectl
+      - name: Connect to home LAN
+        if: steps.scope.outputs.enabled == 'true'
+        env:
+          WG_CONFIG: ${{ secrets.WG_CONFIG }}
+        run: .github/scripts/vpn-up.sh
+      - name: Wait for previews
+        id: wait
+        if: steps.scope.outputs.enabled == 'true'
+        env:
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
+        run: |
+          export KUBECONFIG="$RUNNER_TEMP/kubeconfig"
+          printf '%s' "$KUBECONFIG_DATA" >"$KUBECONFIG"
+          REPORT="$RUNNER_TEMP/report.md" .github/scripts/wait-argocd.sh \
+            --sha "$HEAD_SHA" --apps "${{ steps.scope.outputs.apps }}" \
+            --appset preview-deploy --timeout 600
+      - name: Comment preview status on PR
+        if: always() && steps.scope.outputs.enabled == 'true'
+        env:
+          OUTCOME: ${{ steps.wait.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          marker='<!-- preview-status -->'
+          {
+            echo "$marker"
+            if [ "$OUTCOME" = success ]; then
+              echo "### Preview is healthy at \`${HEAD_SHA:0:7}\`"
+            else
+              echo "### Preview failed at \`${HEAD_SHA:0:7}\`"
+              echo "See the [workflow run]($RUN_URL) for which resources aren't healthy and why."
+            fi
+            echo
+            cat "$RUNNER_TEMP/report.md" 2>/dev/null
+            echo
+            echo "Each chart runs in its own \`<chart>-pr-$PR\` namespace, for example:"
+            echo
+            echo '```bash'
+            echo "kubectl -n minecraft-pr-$PR port-forward service/mc-proxy-service 25565:25565"
+            echo '```'
+            echo
+            echo "Previews are deleted when this PR is closed or merged."
+          } >"$RUNNER_TEMP/comment.md"
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            -q ".[] | select(.body | startswith(\"$marker\")) | .id" | head -1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F "body=@$RUNNER_TEMP/comment.md" >/dev/null
+          else
+            gh pr comment "$PR" --body-file "$RUNNER_TEMP/comment.md"
+          fi
+
+  deploy:
+    name: deploy
+    needs: validate
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Find what changed
+        id: changes
+        env:
+          BEFORE: ${{ github.event.before }}
+          FORCE_TALOS: ${{ inputs.talos }}
+        run: |
+          if [ "$FORCE_TALOS" = true ] || ! git cat-file -e "${BEFORE:-0000}^{commit}" 2>/dev/null; then
+            talos=$FORCE_TALOS
+          elif git diff --name-only "$BEFORE" HEAD | grep -q '^talos/'; then
+            talos=true
+          else
+            talos=false
+          fi
+          echo "talos=${talos:-false}" >>"$GITHUB_OUTPUT"
+          echo "Talos changes: ${talos:-false}"
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        with:
+          install_args: kubectl talos sops aqua:postfinance/topf
+      - name: Connect to home LAN
+        env:
+          WG_CONFIG: ${{ secrets.WG_CONFIG }}
+        run: .github/scripts/vpn-up.sh
+      - name: Apply Talos machine configs
+        if: steps.changes.outputs.talos == 'true'
+        env:
+          # topf builds its Talos client credentials from the decrypted secrets bundle.
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          # One node at a time with health checks; stops at the first node that doesn't stabilize.
+          topf --topfconfig talos/topf.yaml apply --confirm=false --colored never
+          echo "Talos machine configs applied." >>"$GITHUB_STEP_SUMMARY"
+      - name: Wait for Argo CD
+        env:
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
+        run: |
+          export KUBECONFIG="$RUNNER_TEMP/kubeconfig"
+          printf '%s' "$KUBECONFIG_DATA" >"$KUBECONFIG"
+          echo "### Argo CD at \`${GITHUB_SHA:0:7}\`" >>"$GITHUB_STEP_SUMMARY"
+          .github/scripts/wait-argocd.sh --sha "$GITHUB_SHA" --project default --timeout 900

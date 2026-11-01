@@ -1,8 +1,11 @@
 [tools]
 age = "latest"
-"aqua:postfinance/topf" = "latest"
+"aqua:postfinance/topf" = "0.6.2"
 argocd = "latest"
+helm = "4.3.1"
+kubeconform = "0.8.0"
 kubectl = "latest"
 kubeseal = "latest"
-sops = "latest"
+sops = "3.13.3"
 talos = "1.14.0"
+yq = "4.54.1"
