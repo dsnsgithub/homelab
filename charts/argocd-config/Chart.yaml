@@ -1,0 +1,5 @@
+apiVersion: v2
+name: argocd-config
+description: Argo CD accounts and RBAC
+type: application
+version: 0.1.0

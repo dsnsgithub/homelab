@@ -14,21 +14,108 @@ on:
 permissions:
   contents: read
 
+env:
+  ARGOCD_SERVER: 10.3.3.9
+  ARGOCD_OPTS: --insecure --grpc-web
+  REPO_URL: https://github.com/dsnsgithub/homelab.git
+
 jobs:
-  validate:
-    name: validate
+  talos:
+    name: talos
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
-          install_args: helm kubeconform yq talos aqua:postfinance/topf
-      - name: Render and validate manifests and Talos configs
-        run: .github/scripts/validate.sh
+          install_args: talos aqua:postfinance/topf
+      - name: Validate machine configs
+        run: |
+          cp -r talos "$RUNNER_TEMP/talos"
+          talosctl gen secrets --force -o "$RUNNER_TEMP/talos/secrets.yaml"
+          topf --topfconfig "$RUNNER_TEMP/talos/topf.yaml" render -o "$RUNNER_TEMP/out"
+          for config in "$RUNNER_TEMP"/out/*.yaml; do
+            talosctl validate --mode metal --strict -c "$config"
+          done
+
+  diff:
+    name: diff
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    environment: preview
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Reject fork PRs
+        if: github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "::error::Fork PRs can't be diffed against the cluster. Push the branch to this repository instead."
+          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
+        with:
+          install_args: argocd
+      - name: Connect to home LAN
+        env:
+          WG_CONFIG: ${{ secrets.WG_CONFIG }}
+        run: .github/scripts/vpn-up.sh
+      - name: Diff production apps at this commit
+        env:
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+        run: |
+          comment="$RUNNER_TEMP/comment.md"
+          changed=0 failed=0
+          for app in $(argocd app list -p default -o name); do
+            spec=$(argocd app get "$app" -o json)
+            pos=$(jq -r --arg repo "$REPO_URL" '(.spec.sources // []) | to_entries[] | select(.value.repoURL == $repo) | .key + 1' <<<"$spec" | head -1)
+            if [ -n "$pos" ]; then
+              args=(--revisions "$HEAD_SHA" --source-positions "$pos")
+            elif [ "$(jq -r '.spec.source.repoURL' <<<"$spec")" = "$REPO_URL" ]; then
+              args=(--revision "$HEAD_SHA")
+            else
+              continue
+            fi
+            rc=0
+            argocd app diff "$app" "${args[@]}" --server-side-diff >"$RUNNER_TEMP/out" 2>"$RUNNER_TEMP/err" || rc=$?
+            case $rc in
+              0) continue ;;
+              1) changed=$((changed + 1)); body="$RUNNER_TEMP/out"; summary="${app#*/} changes" ;;
+              *) failed=$((failed + 1)); body="$RUNNER_TEMP/err"; summary="${app#*/} failed"
+                 echo "::error::${app#*/}: $(tail -1 "$RUNNER_TEMP/err")" ;;
+            esac
+            fence="\`\`\`"
+            printf '<details><summary>%s</summary>\n\n%sdiff\n%s\n%s\n</details>\n\n' \
+              "$summary" "$fence" "$(head -c 20000 "$body")" "$fence" >>"$RUNNER_TEMP/details.md"
+          done
+          {
+            echo "<!-- argocd-diff -->"
+            echo "### Production diff at \`${HEAD_SHA:0:7}\`"
+            echo
+            if [ $((changed + failed)) -eq 0 ]; then
+              echo "No changes to production apps."
+            else
+              echo "$changed app(s) change, $failed app(s) fail to render or validate."
+              echo
+              cat "$RUNNER_TEMP/details.md"
+            fi
+          } >"$comment"
+          cat "$comment" >>"$GITHUB_STEP_SUMMARY"
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            -q '.[] | select(.body | startswith("<!-- argocd-diff -->")) | .id' | head -1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F "body=@$comment" >/dev/null
+          else
+            gh pr comment "$PR" --body-file "$comment"
+          fi
+          [ "$failed" -eq 0 ]
 
   preview:
     name: preview
-    needs: validate
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     environment: preview
@@ -55,14 +142,12 @@ jobs:
         run: |
           charts=$(for f in charts/*/values-preview.yaml; do basename "$(dirname "$f")"; done)
           changed=$(git diff --name-only "$BASE_SHA" HEAD | awk -F/ '$1 == "charts" {print $2}' | sort -u | grep -Fx -f <(echo "$charts") || true)
-          apps=$(for c in $charts; do printf '%s-pr-%s,' "$c" "$PR"; done)
-          echo "apps=${apps%,}" >>"$GITHUB_OUTPUT"
+          echo "apps=$(for c in $charts; do printf '%s-pr-%s ' "$c" "$PR"; done)" >>"$GITHUB_OUTPUT"
           if [ -n "$changed" ] || [ "$LABELED" = true ]; then
             echo "enabled=true" >>"$GITHUB_OUTPUT"
-            echo "Previews enabled (changed charts: ${changed:-none})."
           else
             echo "enabled=false" >>"$GITHUB_OUTPUT"
-            echo "No previewable charts changed; skipping previews." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "No previewable charts changed." | tee -a "$GITHUB_STEP_SUMMARY"
           fi
       - name: Label PR for the preview ApplicationSet
         if: steps.scope.outputs.enabled == 'true'
@@ -72,7 +157,7 @@ jobs:
       - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         if: steps.scope.outputs.enabled == 'true'
         with:
-          install_args: kubectl
+          install_args: argocd
       - name: Connect to home LAN
         if: steps.scope.outputs.enabled == 'true'
         env:
@@ -82,50 +167,60 @@ jobs:
         id: wait
         if: steps.scope.outputs.enabled == 'true'
         env:
-          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+          APPS: ${{ steps.scope.outputs.apps }}
         run: |
-          export KUBECONFIG="$RUNNER_TEMP/kubeconfig"
-          printf '%s' "$KUBECONFIG_DATA" >"$KUBECONFIG"
-          REPORT="$RUNNER_TEMP/report.md" .github/scripts/wait-argocd.sh \
-            --sha "$HEAD_SHA" --apps "${{ steps.scope.outputs.apps }}" \
-            --appset preview-deploy --timeout 600
+          deadline=$((SECONDS + 300))
+          for app in $APPS; do
+            until [ "$(argocd app get "$app" -o json 2>/dev/null | jq -r '.spec.source.targetRevision')" = "$HEAD_SHA" ]; do
+              if [ "$SECONDS" -ge "$deadline" ]; then
+                echo "::error::The ApplicationSet didn't create $app at ${HEAD_SHA:0:7}."
+                exit 1
+              fi
+              sleep 5
+            done
+          done
+          # shellcheck disable=SC2086
+          if ! argocd app wait $APPS --sync --health --operation --timeout 600; then
+            for app in $APPS; do argocd app get "$app"; done
+            exit 1
+          fi
       - name: Comment preview status on PR
         if: always() && steps.scope.outputs.enabled == 'true'
         env:
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+          APPS: ${{ steps.scope.outputs.apps }}
           OUTCOME: ${{ steps.wait.outcome }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          marker='<!-- preview-status -->'
+          comment="$RUNNER_TEMP/comment.md"
           {
-            echo "$marker"
+            echo "<!-- preview-status -->"
             if [ "$OUTCOME" = success ]; then
               echo "### Preview is healthy at \`${HEAD_SHA:0:7}\`"
             else
-              echo "### Preview failed at \`${HEAD_SHA:0:7}\`"
-              echo "See the [workflow run]($RUN_URL) for which resources aren't healthy and why."
+              echo "### Preview failed at \`${HEAD_SHA:0:7}\` ([logs]($RUN_URL))"
             fi
             echo
-            cat "$RUNNER_TEMP/report.md" 2>/dev/null
-            echo
-            echo "Each chart runs in its own \`<chart>-pr-$PR\` namespace, for example:"
-            echo
-            echo '```bash'
-            echo "kubectl -n minecraft-pr-$PR port-forward service/mc-proxy-service 25565:25565"
-            echo '```'
-            echo
-            echo "Previews are deleted when this PR is closed or merged."
-          } >"$RUNNER_TEMP/comment.md"
+            echo "| App | Sync | Health |"
+            echo "|---|---|---|"
+            for app in $APPS; do
+              argocd app get "$app" -o json 2>/dev/null \
+                | jq -r '"| \(.metadata.name) | \(.status.sync.status) | \(.status.health.status) |"' \
+                || echo "| $app | Missing | - |"
+            done
+          } >"$comment"
+          cat "$comment" >>"$GITHUB_STEP_SUMMARY"
           id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
-            -q ".[] | select(.body | startswith(\"$marker\")) | .id" | head -1)
+            -q '.[] | select(.body | startswith("<!-- preview-status -->")) | .id' | head -1)
           if [ -n "$id" ]; then
-            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F "body=@$RUNNER_TEMP/comment.md" >/dev/null
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F "body=@$comment" >/dev/null
           else
-            gh pr comment "$PR" --body-file "$RUNNER_TEMP/comment.md"
+            gh pr comment "$PR" --body-file "$comment"
           fi
 
   deploy:
     name: deploy
-    needs: validate
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
@@ -142,18 +237,15 @@ jobs:
           BEFORE: ${{ github.event.before }}
           FORCE_TALOS: ${{ inputs.talos }}
         run: |
-          if [ "$FORCE_TALOS" = true ] || ! git cat-file -e "${BEFORE:-0000}^{commit}" 2>/dev/null; then
-            talos=$FORCE_TALOS
-          elif git diff --name-only "$BEFORE" HEAD | grep -q '^talos/'; then
+          talos=${FORCE_TALOS:-false}
+          if [ "$talos" != true ] && git cat-file -e "${BEFORE:-0000}^{commit}" 2>/dev/null \
+            && git diff --name-only "$BEFORE" HEAD | grep -q '^talos/'; then
             talos=true
-          else
-            talos=false
           fi
-          echo "talos=${talos:-false}" >>"$GITHUB_OUTPUT"
-          echo "Talos changes: ${talos:-false}"
+          echo "talos=$talos" >>"$GITHUB_OUTPUT"
       - uses: jdx/mise-action@6612f0ef07ed2a736cd1e00a94a065522dd41195 # v5.2.5
         with:
-          install_args: kubectl talos sops aqua:postfinance/topf
+          install_args: argocd talos sops aqua:postfinance/topf
       - name: Connect to home LAN
         env:
           WG_CONFIG: ${{ secrets.WG_CONFIG }}
@@ -162,14 +254,21 @@ jobs:
         if: steps.changes.outputs.talos == 'true'
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-        run: |
-          topf --topfconfig talos/topf.yaml apply --confirm=false --colored never
-          echo "Talos machine configs applied." >>"$GITHUB_STEP_SUMMARY"
+        run: topf --topfconfig talos/topf.yaml apply --confirm=false --colored never
       - name: Wait for Argo CD
         env:
-          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
         run: |
-          export KUBECONFIG="$RUNNER_TEMP/kubeconfig"
-          printf '%s' "$KUBECONFIG_DATA" >"$KUBECONFIG"
-          echo "### Argo CD at \`${GITHUB_SHA:0:7}\`" >>"$GITHUB_STEP_SUMMARY"
-          .github/scripts/wait-argocd.sh --sha "$GITHUB_SHA" --project default --timeout 900
+          argocd app get root --refresh >/dev/null
+          argocd app wait root --sync --health --operation --timeout 300
+          apps=$(argocd app list -p default -o name)
+          for app in $apps; do argocd app get "$app" --refresh >/dev/null & done
+          wait
+          rc=0
+          # shellcheck disable=SC2086
+          argocd app wait $apps --sync --health --operation --timeout 900 || rc=$?
+          { echo '```'; argocd app list -p default; echo '```'; } >>"$GITHUB_STEP_SUMMARY"
+          if [ "$rc" -ne 0 ]; then
+            for app in $apps; do argocd app get "$app"; done
+          fi
+          exit "$rc"

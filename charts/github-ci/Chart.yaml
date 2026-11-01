@@ -1,5 +1,0 @@
-apiVersion: v2
-name: github-ci
-description: Read and refresh access to Argo CD for GitHub Actions
-type: application
-version: 0.1.0

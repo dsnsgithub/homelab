@@ -18,7 +18,7 @@ spec:
                   key: token
                 labels:
                   - preview
-              requeueAfterSeconds: 60
+              requeueAfterSeconds: 30
           - git:
               repoURL: https://github.com/dsnsgithub/homelab.git
               revision: "{{ include "argocd-pr-generator.gotpl" ".head_sha" }}"

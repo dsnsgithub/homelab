@@ -2,7 +2,7 @@
 set -euo pipefail
 
 lan_cidr=${LAN_CIDR:-10.3.3.0/24}
-probe=${PROBE:-10.3.3.8:6443}
+probe=${PROBE:-10.3.3.9:443}
 
 sudo apt-get install -y -qq wireguard-tools >/dev/null
 

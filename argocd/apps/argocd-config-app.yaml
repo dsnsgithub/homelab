@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: github-ci
+  name: argocd-config
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: https://github.com/dsnsgithub/homelab.git
     targetRevision: main
-    path: charts/github-ci
+    path: charts/argocd-config
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
@@ -20,3 +20,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=false
+      - ServerSideApply=true
