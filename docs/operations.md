@@ -1,43 +1,42 @@
 # Operations
 
+## Making Changes
+
+`main` is production. Every change goes through a PR, which must pass:
+
+- `render`: renders `bootstrap/` and runs `talosctl validate` on the rendered machine configs.
+- `diff`: [argocd-diff-preview](https://github.com/dag-andersen/argocd-diff-preview), commented on the PR.
+- `preview`: deploys previews if the PR changes a chart with `values-preview.yaml`, then `argocd app wait`.
+
+On merge, `deploy` runs `topf apply` in try mode, then for real, applies `bootstrap/` (Argo CD and sealed-secrets), then `argocd app wait`. Talos changes that need a reboot can't use try mode, so apply those by hand.
+
+To undo a merge, revert it. Admin pushes to `main` skip the checks but still deploy.
+
+Versions are pinned everywhere; [Renovate](https://docs.renovatebot.com/) opens PRs to bump them.
+
+## CI Secrets
+
+| Secret | Environments | Contents |
+|---|---|---|
+| `WG_CONFIG` | `production`, `preview` | WireGuard peer for the runner, with `AllowedIPs = 10.3.3.0/24` and no `DNS` |
+| `ARGOCD_AUTH_TOKEN` | `production`, `preview` | Read-only `github-ci` Argo CD account (`bootstrap/argocd`) |
+| `SOPS_AGE_KEY` | `production` | CI age key for `talos/secrets.yaml` and `bootstrap/sealed-secrets/keys.yaml` (full cluster access) |
+
+To rotate `SOPS_AGE_KEY`, replace the CI recipient in `.sops.yaml` and run `sops updatekeys` on both files.
+
 ## PR Previews
 
-Add the `preview` label to a PR to deploy each opted-in chart into
-`<chart>-pr-<number>`. The ApplicationSet discovers
-`charts/*/values-preview.yaml` at the PR commit and loads that file over the
-chart's normal `values.yaml`. Production applications continue to use their
-normal values.
-
-To enable previews for a new application chart:
-
-1. Add `charts/<chart>/values-preview.yaml` with its preview overrides. Use `{}`
-   if the defaults are already suitable for previews.
-2. Ensure every namespaced resource uses `.Values.namespace`. The ApplicationSet
-   supplies the PR namespace with higher precedence than the preview values file.
-3. Disable or replace production hostnames, fixed LoadBalancer IPs, shared storage,
-   and production backend connections as appropriate for the application.
-
-Charts without `values-preview.yaml` are skipped. Keep cluster infrastructure
-charts out of previews. This opt-in configures preview behavior; it does not
-enforce isolation from production. Minecraft still uses the configured lobby
-backend, and web-proxy Services still reference the configured upstreams.
-
-Minecraft previews use ClusterIP. Connect to `localhost:25565` after running:
+Charts with `values-preview.yaml` deploy to `<chart>-pr-<number>` and are deleted when the PR closes. Previews can't leave `*-pr-*` namespaces or create IngressRoutes, Certificates, or LoadBalancer/NodePort Services.
 
 ```bash
-kubectl -n minecraft-pr-32 port-forward service/mc-proxy-service 25565:25565
+kubectl -n minecraft-pr-<number> port-forward service/mc-proxy-service 25565:25565
 ```
-
-Replace `32` with the PR number. Port forwarding supports TCP only, so UDP voice
-chat requires access from inside the cluster. Older PRs must include the preview
-values files to be discovered and the configurable Minecraft Service type to
-avoid claiming the production VIP.
 
 ## Control Plane Scheduling
 
-`talos-m2` uses the default control plane taint (`node-role.kubernetes.io/control-plane:NoSchedule`) and is excluded from external load balancers. `talos-m4` and `talos-raider` remain control plane nodes with those defaults removed so they can run workloads.
+`talos-m2` keeps the default control plane taint. `talos-m4` and `talos-raider` run workloads.
 
-Apply Talos configuration changes with:
+Apply Talos changes by hand:
 
 ```bash
 topf --topfconfig talos/topf.yaml apply

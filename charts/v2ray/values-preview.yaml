@@ -1,2 +1,5 @@
-# Opt into previews; chart defaults need no overrides beyond the PR namespace.
-{}
+quota:
+  pods: "10"
+  requests.cpu: 500m
+  requests.memory: 512Mi
+  limits.memory: 1Gi

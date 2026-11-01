@@ -15,6 +15,13 @@ env:
   vip_renewdeadline: "3"
   vip_retryperiod: "1"
 
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 256Mi
+
 securityContext:
   capabilities:
     add:

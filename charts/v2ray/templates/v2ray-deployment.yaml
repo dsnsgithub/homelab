@@ -5,6 +5,7 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   replicas: {{ .Values.replicas }}
+  minReadySeconds: 10
   selector:
     matchLabels:
       app: v2ray
@@ -17,18 +18,18 @@ spec:
       - labelSelector:
           matchLabels:
             app: v2ray
-        # Only count pods from the same rollout, or old pods skew new ones onto one node.
         matchLabelKeys:
         - pod-template-hash
         maxSkew: 1
         topologyKey: kubernetes.io/hostname
         whenUnsatisfiable: DoNotSchedule
-        # Skip cordoned/down nodes so a lost node doesn't leave replicas Pending.
         nodeTaintsPolicy: Honor
       initContainers:
       - name: render-config
-        image: busybox:latest
+        image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
         command: ['sh', '-c', 'ID=$(cat /v2ray-id/id); sed "s/__V2RAY_ID__/${ID}/g" /config-template/config.json > /rendered-config/config.json']
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
         volumeMounts:
         - name: v2ray-config
           mountPath: /rendered-config
@@ -38,11 +39,24 @@ spec:
           mountPath: /v2ray-id
       containers:
       - name: v2ray
-        image: {{ .Values.image }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         args:
         - run
         - -c
         - /etc/v2ray/config.json
+        ports:
+        - containerPort: {{ .Values.service.port }}
+          name: vmess
+        readinessProbe:
+          tcpSocket:
+            port: vmess
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: vmess
+          periodSeconds: 20
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
         volumeMounts:
         - name: v2ray-config
           mountPath: /etc/v2ray/config.json

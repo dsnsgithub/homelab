@@ -3,18 +3,53 @@ createNamespace: true
 
 replicas: 2
 
+initContainers:
+  configImage:
+    repository: busybox
+    tag: 1.38.0
+  downloadImage:
+    repository: alpine
+    tag: 3.24.3
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      memory: 64Mi
+
 mcProxy:
-  image: itzg/mc-proxy:java25
+  image:
+    repository: itzg/mc-proxy
+    tag: java25-2026.10.2
   port: 25577
   env:
     TYPE: VELOCITY
+    VELOCITY_VERSION: "4.3.1"
+    VELOCITY_BUILD_ID: "45"
+    MEMORY: 512m
     MINECRAFT_VERSION: "26.2"
     MODRINTH_PROJECTS:
-      - velocity-limbo-handler
-      - simple-voice-chat:alpha
+      - velocity-limbo-handler:Gs98BC0G
+      - simple-voice-chat:Ue35nhwF
+  resources:
+    requests:
+      cpu: 100m
+      memory: 384Mi
+    limits:
+      memory: 1Gi
 
 limbo:
-  image: ghcr.io/quozul/picolimbo:latest
+  image:
+    repository: ghcr.io/quozul/picolimbo
+    tag: v1.15.0-mc26.3
+  port: 25565
+  schematicURL: https://github.com/LOOHP/Limbo/raw/cadac37193669db1d397abd4b663a0c9b3b717cf/spawn.schem
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      memory: 64Mi
 
 service:
   type: LoadBalancer

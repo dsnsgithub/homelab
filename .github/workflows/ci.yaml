@@ -1,0 +1,179 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ARGOCD_SERVER: 10.3.3.9
+  ARGOCD_OPTS: --insecure --grpc-web
+
+jobs:
+  render:
+    name: render
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
+        with:
+          install_args: kubectl talos aqua:postfinance/topf
+      - name: Render bootstrap layer
+        run: kubectl kustomize bootstrap >/dev/null
+      - name: Validate Talos machine configs
+        run: |
+          cp -r talos "$RUNNER_TEMP/talos"
+          talosctl gen secrets --force -o "$RUNNER_TEMP/talos/secrets.yaml"
+          topf --topfconfig "$RUNNER_TEMP/talos/topf.yaml" render -o "$RUNNER_TEMP/out"
+          for config in "$RUNNER_TEMP"/out/*.yaml; do
+            talosctl validate --mode metal --strict -c "$config"
+          done
+
+  diff:
+    name: diff
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: pull-request
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          path: main
+      - run: |
+          docker run \
+            --network=host \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$(pwd)/main:/base-branch" \
+            -v "$(pwd)/pull-request:/target-branch" \
+            -v "$(pwd)/output:/output" \
+            -e TARGET_BRANCH=refs/pull/${{ github.event.number }}/merge \
+            -e REPO=${{ github.repository }} \
+            -e FILE_REGEX='argocd/.*\.yaml' \
+            dagandersen/argocd-diff-preview:v0.2.17
+      - if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment ${{ github.event.number }} --repo ${{ github.repository }} --body-file output/diff.md --edit-last || \
+          gh pr comment ${{ github.event.number }} --repo ${{ github.repository }} --body-file output/diff.md
+
+  preview:
+    name: preview
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: preview
+    concurrency:
+      group: preview-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    env:
+      PR: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          charts=$(dirname charts/*/values-preview.yaml)
+          # shellcheck disable=SC2086
+          if git diff --quiet "$BASE_SHA" HEAD -- $charts; then
+            echo "No previewable charts changed."
+          else
+            echo "apps=$(for c in $charts; do printf '%s-pr-%s ' "${c#charts/}" "$PR"; done)" >>"$GITHUB_OUTPUT"
+          fi
+      - if: steps.scope.outputs.apps
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create preview --color 0E8A16 --force
+          gh pr edit "$PR" --add-label preview
+      - if: steps.scope.outputs.apps
+        uses: jdx/mise-action@v5
+        with:
+          install_args: argocd
+      - if: steps.scope.outputs.apps
+        env:
+          WG_CONFIG: ${{ secrets.WG_CONFIG }}
+        run: |
+          sudo apt-get install -y -qq wireguard-tools
+          echo "$WG_CONFIG" | sudo tee /etc/wireguard/wg0.conf >/dev/null
+          sudo wg-quick up wg0
+      - if: steps.scope.outputs.apps
+        env:
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+          APPS: ${{ steps.scope.outputs.apps }}
+        run: |
+          for app in $APPS; do
+            until [ "$(argocd app get "$app" -o json 2>/dev/null | jq -r .spec.source.targetRevision)" = "$HEAD_SHA" ]; do
+              sleep 5
+            done
+          done
+          # shellcheck disable=SC2086
+          argocd app wait $APPS --sync --health --operation --timeout 600
+        timeout-minutes: 15
+
+  deploy:
+    name: deploy
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
+        with:
+          install_args: argocd kubectl talos sops aqua:postfinance/topf
+      - env:
+          WG_CONFIG: ${{ secrets.WG_CONFIG }}
+        run: |
+          sudo apt-get install -y -qq wireguard-tools
+          echo "$WG_CONFIG" | sudo tee /etc/wireguard/wg0.conf >/dev/null
+          sudo wg-quick up wg0
+      - name: Apply Talos machine configs
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        # Try mode reverts each node after a minute, so a config that cuts a node off undoes itself.
+        run: |
+          topf --topfconfig talos/topf.yaml apply --confirm=false --colored never --mode try
+          topf --topfconfig talos/topf.yaml apply --confirm=false --colored never
+      # Applied here rather than by Argo CD, so reverting a change that breaks Argo CD still works.
+      - name: Apply Argo CD and sealed-secrets
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          export KUBECONFIG="$RUNNER_TEMP/kubeconfig"
+          topf --topfconfig talos/topf.yaml --log-level warn kubeconfig --validity 1h >"$KUBECONFIG"
+          sops decrypt bootstrap/sealed-secrets/keys.yaml | kubectl apply --server-side -f -
+          kubectl apply --server-side --force-conflicts -k bootstrap
+          kubectl -n kube-system rollout status deploy/sealed-secrets-controller --timeout 300s
+          for workload in $(kubectl -n argocd get deploy,sts -o name); do
+            kubectl -n argocd rollout status "$workload" --timeout 300s
+          done
+      - name: Wait for Argo CD
+        env:
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+        run: |
+          argocd app get root --refresh >/dev/null
+          argocd app wait root --sync --health --operation --timeout 300
+          apps=$(argocd app list -p default -o name)
+          for app in $apps; do argocd app get "$app" --refresh >/dev/null; done
+          # shellcheck disable=SC2086
+          argocd app wait $apps --sync --health --operation --timeout 900

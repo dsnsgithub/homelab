@@ -5,6 +5,7 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   replicas: {{ .Values.replicas }}
+  minReadySeconds: 10
   selector:
     matchLabels:
       app: mc-proxy
@@ -17,18 +18,18 @@ spec:
       - labelSelector:
           matchLabels:
             app: mc-proxy
-        # Only count pods from the same rollout, or old pods skew new ones onto one node.
         matchLabelKeys:
         - pod-template-hash
         maxSkew: 1
         topologyKey: kubernetes.io/hostname
         whenUnsatisfiable: DoNotSchedule
-        # Skip cordoned/down nodes so a lost node doesn't leave replicas Pending.
         nodeTaintsPolicy: Honor
       initContainers:
       - name: init-configs
-        image: busybox:latest
+        image: "{{ .Values.initContainers.configImage.repository }}:{{ .Values.initContainers.configImage.tag }}"
         command: ['sh', '-c', 'cp /config-template/velocity.toml /server/velocity.toml && cp /forwarding-secret/forwarding.secret /server/forwarding.secret']
+        resources:
+          {{- toYaml .Values.initContainers.resources | nindent 10 }}
         volumeMounts:
         - name: server-data
           mountPath: /server
@@ -38,10 +39,16 @@ spec:
           mountPath: /forwarding-secret
       containers:
       - name: proxy
-        image: {{ .Values.mcProxy.image }}
+        image: "{{ .Values.mcProxy.image.repository }}:{{ .Values.mcProxy.image.tag }}"
         env:
         - name: TYPE
           value: {{ .Values.mcProxy.env.TYPE | quote }}
+        - name: VELOCITY_VERSION
+          value: {{ .Values.mcProxy.env.VELOCITY_VERSION | quote }}
+        - name: VELOCITY_BUILD_ID
+          value: {{ .Values.mcProxy.env.VELOCITY_BUILD_ID | quote }}
+        - name: MEMORY
+          value: {{ .Values.mcProxy.env.MEMORY | quote }}
         - name: MINECRAFT_VERSION
           value: {{ .Values.mcProxy.env.MINECRAFT_VERSION | quote }}
         - name: MODRINTH_PROJECTS
@@ -55,6 +62,22 @@ spec:
         - containerPort: {{ .Values.mcProxy.port }}
           protocol: UDP
           name: voice-chat
+        # Startup downloads Velocity and plugins.
+        startupProbe:
+          tcpSocket:
+            port: velocity
+          periodSeconds: 10
+          failureThreshold: 30
+        readinessProbe:
+          tcpSocket:
+            port: velocity
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: velocity
+          periodSeconds: 20
+        resources:
+          {{- toYaml .Values.mcProxy.resources | nindent 10 }}
         volumeMounts:
         - name: server-data
           mountPath: /server

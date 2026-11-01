@@ -5,6 +5,7 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   replicas: {{ .Values.replicas }}
+  minReadySeconds: 10
   selector:
     matchLabels:
       app: limbo
@@ -17,30 +18,43 @@ spec:
       - labelSelector:
           matchLabels:
             app: limbo
-        # Only count pods from the same rollout, or old pods skew new ones onto one node.
         matchLabelKeys:
         - pod-template-hash
         maxSkew: 1
         topologyKey: kubernetes.io/hostname
         whenUnsatisfiable: DoNotSchedule
-        # Skip cordoned/down nodes so a lost node doesn't leave replicas Pending.
         nodeTaintsPolicy: Honor
       initContainers:
       - name: download-schematic
-        image: alpine:latest
-        command: ['sh', '-c', 'wget -O /data/spawn.schem https://github.com/LOOHP/Limbo/raw/refs/heads/master/spawn.schem']
+        image: "{{ .Values.initContainers.downloadImage.repository }}:{{ .Values.initContainers.downloadImage.tag }}"
+        command: ['sh', '-c', 'wget -O /data/spawn.schem {{ .Values.limbo.schematicURL }}']
+        resources:
+          {{- toYaml .Values.initContainers.resources | nindent 10 }}
         volumeMounts:
         - name: limbo-data
           mountPath: /data
       containers:
       - name: limbo
-        image: {{ .Values.limbo.image }}
+        image: "{{ .Values.limbo.image.repository }}:{{ .Values.limbo.image.tag }}"
         env:
         - name: VELOCITY_FORWARDING_SECRET
           valueFrom:
             secretKeyRef:
               name: velocity-forwarding-secret
               key: forwarding.secret
+        ports:
+        - containerPort: {{ .Values.limbo.port }}
+          name: minecraft
+        readinessProbe:
+          tcpSocket:
+            port: minecraft
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: minecraft
+          periodSeconds: 20
+        resources:
+          {{- toYaml .Values.limbo.resources | nindent 10 }}
         volumeMounts:
         - name: limbo-config
           mountPath: /usr/src/app/server.toml

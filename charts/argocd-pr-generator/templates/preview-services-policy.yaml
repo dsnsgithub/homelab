@@ -1,0 +1,26 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: preview-services
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["services"]
+  matchConditions:
+    - name: preview-namespace
+      expression: request.namespace.matches('-pr-[0-9]+$')
+  validations:
+    - expression: "!(object.spec.type in ['LoadBalancer', 'NodePort'])"
+      message: Previews can't expose LoadBalancer or NodePort Services.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: preview-services
+spec:
+  policyName: preview-services
+  validationActions: [Deny]
