@@ -14,3 +14,12 @@ spec:
     - group: ""
       kind: Namespace
       name: "*-pr-*"
+  namespaceResourceBlacklist:
+    - group: traefik.io
+      kind: IngressRoute
+    - group: traefik.io
+      kind: IngressRouteTCP
+    - group: traefik.io
+      kind: IngressRouteUDP
+    - group: cert-manager.io
+      kind: Certificate
