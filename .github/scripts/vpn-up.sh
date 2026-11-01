@@ -4,6 +4,11 @@ set -euo pipefail
 lan_cidr=${LAN_CIDR:-10.3.3.0/24}
 probe=${PROBE:-10.3.3.9:443}
 
+if [ -z "${WG_CONFIG:-}" ]; then
+  echo "::error::The WG_CONFIG secret isn't set for this environment."
+  exit 1
+fi
+
 sudo apt-get install -y -qq wireguard-tools >/dev/null
 
 # wg-quick's DNS= needs resolvconf, which runners don't have.
