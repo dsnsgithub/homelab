@@ -6,9 +6,14 @@ topologySpreadConstraints:
       matchLabels:
         app.kubernetes.io/name: '{{ template "traefik.name" . }}'
         app.kubernetes.io/instance: '{{ template "traefik.instance-name" . }}'
+    # Only count pods from the same rollout, or old pods skew new ones onto one node.
+    matchLabelKeys:
+      - pod-template-hash
     maxSkew: 1
     topologyKey: kubernetes.io/hostname
-    whenUnsatisfiable: ScheduleAnyway
+    whenUnsatisfiable: DoNotSchedule
+    # Skip cordoned/down nodes so a lost node doesn't leave replicas Pending.
+    nodeTaintsPolicy: Honor
 
 providers:
   kubernetesCRD:
