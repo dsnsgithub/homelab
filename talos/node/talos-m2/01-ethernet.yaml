@@ -1,0 +1,7 @@
+apiVersion: v1alpha1
+kind: EthernetConfig
+name: enp0s1
+features:
+  tx-tcp-segmentation: false
+  tx-tcp6-segmentation: false
+  tx-generic-segmentation: false
