@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Render every Argo CD Application and preview chart the way Argo CD would,
-# schema-check the output, and validate the Talos machine configs.
-# Needs no cluster access or secrets. Usage: validate.sh [render-dir]
+# Usage: validate.sh [render-dir]
 set -uo pipefail
 
 root=$(git rev-parse --show-toplevel)
@@ -15,8 +13,6 @@ fail() {
   echo "::error file=$1::$2"
 }
 
-# helm_args <source-json> <chart-dir-for-relative-values>
-# Prints value-file and values-object flags for an Argo CD Helm source.
 helm_values() {
   local src=$1 chart_dir=$2 tmp
   while IFS= read -r f; do
@@ -81,7 +77,6 @@ for values in "$root"/charts/*/values-preview.yaml; do
     fail "${values#"$root"/}" "helm template failed"
     continue
   fi
-  # Previews may only create their own namespace and resources inside it.
   stray=$(yq -N "select(. != null) | select(
       (.kind == \"Namespace\" and .metadata.name != \"$ns\") or
       (.kind != \"Namespace\" and .metadata.namespace != \"$ns\")
@@ -95,7 +90,7 @@ done
 echo "::endgroup::"
 
 echo "::group::Schema validation"
-# Upstream charts ship their own CRDs, and there's no published schema for CRD objects.
+# No published schema exists for CRD objects.
 if ! kubeconform -strict -summary -output text -skip CustomResourceDefinition \
   -schema-location default \
   -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \

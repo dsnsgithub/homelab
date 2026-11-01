@@ -1,12 +1,5 @@
 #!/usr/bin/env bash
-# Refresh Argo CD Applications and wait until each is Synced and Healthy at a commit.
-#
-#   wait-argocd.sh --sha SHA (--project NAME | --apps a,b,c) [--appset NAME] [--timeout SECONDS]
-#
-# --project waits for every Application in that project (re-listed each poll, so
-# Applications the root app creates mid-deploy are picked up). --apps waits for
-# Applications that may not exist yet, such as previews an ApplicationSet creates.
-# Writes a Markdown status table to $REPORT (default: $GITHUB_STEP_SUMMARY).
+# Usage: wait-argocd.sh --sha SHA (--project NAME | --apps a,b,c) [--appset NAME] [--timeout SECONDS]
 set -uo pipefail
 
 ns=argocd
@@ -40,7 +33,6 @@ targets() {
   fi
 }
 
-# One JSON object per target: name, sync, health, revision, phase, message, ready.
 status() {
   local all
   all=$(kubectl -n "$ns" get applications -o json)

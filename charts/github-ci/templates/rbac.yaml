@@ -13,7 +13,6 @@ metadata:
     kubernetes.io/service-account.name: {{ .Values.name }}
 type: kubernetes.io/service-account-token
 ---
-# Watch Argo CD sync/health and request refreshes; no access to workloads or secrets.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:

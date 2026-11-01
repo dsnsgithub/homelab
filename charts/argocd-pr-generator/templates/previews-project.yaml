@@ -10,7 +10,6 @@ spec:
   destinations:
     - server: https://kubernetes.default.svc
       namespace: "*-pr-*"
-  # Charts own their preview namespace so deleting the preview removes it.
   clusterResourceWhitelist:
     - group: ""
       kind: Namespace

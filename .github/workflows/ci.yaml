@@ -29,7 +29,6 @@ jobs:
   preview:
     name: preview
     needs: validate
-    # Fork PRs never get cluster access.
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     environment: preview
@@ -162,10 +161,8 @@ jobs:
       - name: Apply Talos machine configs
         if: steps.changes.outputs.talos == 'true'
         env:
-          # topf builds its Talos client credentials from the decrypted secrets bundle.
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |
-          # One node at a time with health checks; stops at the first node that doesn't stabilize.
           topf --topfconfig talos/topf.yaml apply --confirm=false --colored never
           echo "Talos machine configs applied." >>"$GITHUB_STEP_SUMMARY"
       - name: Wait for Argo CD

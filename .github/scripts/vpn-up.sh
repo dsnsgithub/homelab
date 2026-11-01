@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Join the home LAN over WireGuard. Expects the peer config in $WG_CONFIG.
 set -euo pipefail
 
 lan_cidr=${LAN_CIDR:-10.3.3.0/24}
@@ -7,8 +6,7 @@ probe=${PROBE:-10.3.3.8:6443}
 
 sudo apt-get install -y -qq wireguard-tools >/dev/null
 
-# Route only the LAN through the tunnel, and keep the runner's own DNS
-# (wg-quick's DNS= needs resolvconf, which the runner image doesn't have).
+# wg-quick's DNS= needs resolvconf, which runners don't have.
 printf '%s\n' "$WG_CONFIG" \
   | sed -E '/^\s*DNS\s*=/d; s|^\s*AllowedIPs\s*=.*|AllowedIPs = '"$lan_cidr"'|' \
   | sudo tee /etc/wireguard/wg0.conf >/dev/null
