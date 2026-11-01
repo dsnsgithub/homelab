@@ -8,9 +8,9 @@
 - `diff`: [argocd-diff-preview](https://github.com/dag-andersen/argocd-diff-preview), commented on the PR.
 - `preview`: deploys previews if the PR changes a chart with `values-preview.yaml`, then `argocd app wait`.
 
-On merge, `deploy` runs `topf apply`, then `argocd app wait`.
+On merge, `deploy` runs `topf apply` in try mode, then for real, then `argocd app wait`. Talos changes that need a reboot can't use try mode, so apply those by hand.
 
-Admin pushes to `main` skip the checks but still deploy. Revert to roll back.
+To undo a merge, revert it. Admin pushes to `main` skip the checks but still deploy.
 
 ## CI Secrets
 

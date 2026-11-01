@@ -147,7 +147,10 @@ jobs:
       - name: Apply Talos machine configs
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
-        run: topf --topfconfig talos/topf.yaml apply --confirm=false --colored never
+        # Try mode reverts each node after a minute, so a config that cuts a node off undoes itself.
+        run: |
+          topf --topfconfig talos/topf.yaml apply --confirm=false --colored never --mode try
+          topf --topfconfig talos/topf.yaml apply --confirm=false --colored never
       - name: Wait for Argo CD
         env:
           ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}

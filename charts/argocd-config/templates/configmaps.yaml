@@ -21,3 +21,14 @@ data:
     p, role:github-ci, applications, get, */*, allow
     p, role:github-ci, projects, get, *, allow
     g, github-ci, role:github-ci
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cmd-params-cm
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false,ServerSideApply=true
+data:
+  # A sync stuck on a broken commit would otherwise block the revert from syncing.
+  controller.sync.timeout.seconds: "600"
